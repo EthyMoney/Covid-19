@@ -42,8 +42,22 @@ shortcountrynames.names["UK"] = 'UK'
 let keys = JSON.parse(fs.readFileSync('keys.json', 'utf8'));
 
 // Stats caches
-let statesJSON = JSON.parse(fs.readFileSync("USstats.json", "utf8"));
-let worldCacheJSON = JSON.parse(fs.readFileSync("WorldStats.json", "utf8"));
+try {
+  var statesJSON = JSON.parse(fs.readFileSync("USstats.json", "utf8"));
+} catch (err) {
+  fs.appendFile('USstats.json', '{}', function (err) {
+    if (err) throw err;
+    console.log(chalk.green('Created new USstats.json file automatically.'));
+  });
+}
+try {
+  var worldCacheJSON = JSON.parse(fs.readFileSync("WorldStats.json", "utf8"));
+} catch (err) {
+  fs.appendFile('WorldStats.json', '{}', function (err) {
+    if (err) throw err;
+    console.log(chalk.green('Created new WorldStats.json file automatically.'));
+  });
+}
 
 // Set the prefix
 const prefix = ['-c', '.cv', '-C', '.CV', '.Cv', '.cV'];
