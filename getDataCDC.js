@@ -6,44 +6,33 @@ const { JSDOM } = jsdom;
 
 
 
-function update2() {
-  var options = {
-    uri: 'https://www.cdc.gov/coronavirus/2019-ncov/map-cases-us.json',
-    json: true // Automatically parses the JSON string in the response
-  };
-  rp(options)
-    .then(function (nice) {
-      fs.writeFile("CDC_data.json", JSON.stringify(nice), function (err) {
-        if (err)
-          return console.log(err);
-      });
-    })
-    .catch(function (err) {
-      // API call failed...
-      console.log("CDC API Failed to respond...")
-    });
-  rp('https://www.cdc.gov/coronavirus/2019-ncov/cases-updates/cases-in-us.html')
-    .then(function (nice) {
-      const dom = new JSDOM(nice);
-      let block = dom.window.document.getElementsByClassName("card-body bg-white");
-      let DOMcases = block[0].querySelector("ul").firstElementChild;
-      let DOMdeaths = DOMcases.nextElementSibling;
-      let totalCasesUS = DOMcases.textContent;
-      let totalDeathsUS = DOMdeaths.textContent;
-      let JSONbuilder = {
-        "cases": totalCasesUS,
-        "deaths": totalDeathsUS
+function usStatsCacher() {
+  rp('https://www.worldometers.info/coronavirus/country/us/')
+  .then(function (nice) {
+    const dom = new JSDOM(nice);
+    let jsonArr = [];
+    let table = dom.window.document.getElementById("usa_table_countries_today").tBodies.item(0).rows;
+    for (let i = 0; i < table.length; i++) {
+      let cells = table[i].cells;
+      let JSONbuilder2 = {
+        "state": cells[0].textContent.trim(),
+        "cases": cells[1].textContent.trim(),
+        "newcases": cells[2].textContent.trim(),
+        "deaths": cells[3].textContent.trim(), //deaths number has strange trailing whitespace, so it's trimmed here
+        "newdeaths": cells[4].textContent.trim(),
+        "activecases": cells[5].textContent.trim()
       }
-      fs.writeFile("GeneralStats.json", JSON.stringify(JSONbuilder), function (err) {
-        if (err)
-          return console.log(err);
-      });
-      console.log(chalk.magenta("Successfully cached US CDC data!!"));
-    })
-    .catch(function (err) {
-      // API call failed...
-      console.log(err)
+      jsonArr.push(JSONbuilder2);
+    }
+    fs.writeFile("USstats.json", JSON.stringify(jsonArr), function (err) {
+      if (err)
+        return console.log(err);
     });
+    console.log(chalk.magenta("Successfully cached US data!!"));
+  })
+  .catch(function (err) {
+    console.log(chalk.red("US cache retrieval error: ") + err)
+  });
 }
 
 
@@ -90,4 +79,4 @@ function worldMetersCacher(){
 }
 
 exports.worldCache = worldMetersCacher;
-exports.update = update2;
+exports.update = usStatsCacher;
