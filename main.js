@@ -380,7 +380,7 @@ function getUsCases(chn, state) {
       chn.send("__**" + state + ":**__ " +
         "\nCases:  " + cases +
         "\nDeaths:  " + deaths +
-        "\nRecoveries:  " + recovered);
+        "\nRecoveries:  " + numberWithCommas(recovered));
     }
     else {
       chn.send("That state wasn't found! Make sure you enter a valid US state and try again.\n(Example:  `.cv state mn`  for data from Minnesota)")
@@ -446,6 +446,15 @@ function updateCache() {
     statesJSON = JSON.parse(fs.readFileSync("USstats.json", "utf8"));
     worldCacheJSON = JSON.parse(fs.readFileSync("WorldStats.json", "utf8"));
   }, 15000); // wait for data collection to finish before reading files again
+}
+
+
+
+// Function to add commas to numbers
+function numberWithCommas(x) {
+  var parts = x.toString().split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.join(".");
 }
 
 
