@@ -34,12 +34,12 @@ const chalk = require('chalk');
 const schedule = require('node-schedule');
 const reloader = require('./getDataCDC');
 const shortcountrynames = require("shortcountrynames")
- 
+
 // Define custom country codes to match input to the data cache key values
 shortcountrynames.names["UK"] = 'UK'
 
 // Secret keys and tokens
-let keys = JSON.parse(fs.readFileSync('keys.json','utf8'));
+let keys = JSON.parse(fs.readFileSync('keys.json', 'utf8'));
 
 // Stats caches
 let statesJSON = JSON.parse(fs.readFileSync("CDC_data.json", "utf8"));
@@ -66,6 +66,8 @@ let updateStatesStats = schedule.scheduleJob('0 * * * *', updateCache); // updat
 client.on('ready', () => {
   console.log(chalk.greenBright(`Logged in as ${client.user.tag}!`));
   updateCache(); //refresh cache on startup right away
+  // Display help command on bot's status
+  client.user.setActivity('.cv help');
 });
 
 // Logs additions of new servers
@@ -141,25 +143,31 @@ async function commands(message) {
     // Check and process commands
     //
 
+    if (code_in[1]) { var param1 = code_in[1] } else { var param1 = "" }
+    if (code_in[2]) { var param2 = code_in[2] } else { var param2 = "" }
+    if (code_in[3]) { var param3 = code_in[3] } else { var param3 = "" }
+    if (code_in[4]) { var param4 = code_in[4] } else { var param4 = "" }
+    let combinedParams = (param1 + " " + param2 + " " + param3 + " " + param4).trim();
+
     // Get cases
     if (command === 'cases' || command === 'case' || command === 'c' || command === 'confirmed') {
       //getUsCases(channel, code_in[1]);
       console.log(chalk.green(chalk.blue("cases") + " command called by " + chalk.yellow(msg.author.username) + " in: " + chalk.cyan(message.guild.name)));
-      getCases(channel, code_in[1]);
+      getCases(channel, combinedParams);
 
       // Get deaths
     } else if (command === 'deaths' || command === 'death' || command === 'd' || command === 'dead' || command === 'died') {
       console.log(chalk.green(chalk.blue("deaths") + " command called by " + chalk.yellow(msg.author.username) + " in: " + chalk.cyan(message.guild.name)));
-      getDeaths(channel, code_in[1]);
+      getDeaths(channel, combinedParams);
 
       // Get recoveries in the US
     } else if (command === 'recoveries' || command === 'recovered' || command === 'r' || command === 'recover' || command === 'recovery') {
       console.log(chalk.green(chalk.blue("recoveries") + " command called by " + chalk.yellow(msg.author.username) + " in: " + chalk.cyan(message.guild.name)));
-      getRecoveries(channel, code_in[1]);
+      getRecoveries(channel, combinedParams);
 
       // Help
     } else if (command === 'help' || !command) {
-      console.log(chalk.cyan("help command deployed to " + chalk.yellow(message.author.username) + " in: " + chalk.cyan(message.guild.name)));
+      console.log(chalk.cyan("help command deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
       channel.send("Hi there! This bot is a very rapidly changing **work in progress** and just recently began development.\n"
         + "Basic stats for countries accross the world are available currently. More details and enahanced summary reports will be added soon!\n\n" +
         "**Here's how to use what's available so far:**\n" +
@@ -169,7 +177,25 @@ async function commands(message) {
         ":small_blue_diamond: To see total cases/deaths/recoveries in a particular country, simply add the country after the command like this: `.cv deaths <country>`\n" +
         ":pencil: Here's an example command:  `.cv cases us`  => display confirmed cases in the United States\n" +
         ":pencil: NOTE: Currently supported command prefixes are either `.cv` or `-c`");
+
+      // Github
+    } else if (command === 'github' || command === 'source' || command === 'code') {
+      channel.send("https://github.com/YoloSwagDogDiggity/Covid-19");
+      console.log(chalk.cyan("Github repo deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
+
+      // Invite
+    } else if (command === 'invite' || command === 'add' || command === 'join') {
+      channel.send("I'm thrilled you want me to join you! I'll make it super easy to invite me to your server using this link: \n" +
+        "https://discordapp.com/oauth2/authorize?client_id=691863138559328327&scope=bot&permissions=67488832");
+      console.log(chalk.cyan("Invite link deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
+
+      // Donate to response efforts
+    } else if (command === 'donate' || command === 'don' || command === 'give') {
+      channel.send("During this time of critical need, any financial support will go a very long way to help save lives. Here's is a link to donate to the official COVID-19 Solidarity Response Fund: \n" +
+        "https://www.who.int/emergencies/diseases/novel-coronavirus-2019/donate");
+      console.log(chalk.cyan("Donation link deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
     }
+
   }
 }
 
@@ -194,14 +220,15 @@ function getCases(chn, param) {
         for (let i = 1; i < worldCacheJSON.length; i++) {
           let chunk = worldCacheJSON[i];
           if (chunk.country.toLowerCase() == param.toLowerCase()) {
-            if(chunk.newcases){
-              var yote = "  ("+chunk.newcases+" today)"
-            } else {var yote = "";}
+            if (chunk.newcases) {
+              var yote = "  (" + chunk.newcases + " today)"
+            } else { var yote = ""; }
             chn.send("Total confirmed cases in **" + chunk.country + ":**  " + chunk.cases + yote);
             return;
           }
         }
-        chn.send("That input was not recognized. If you know you entered a valid country, tag ethy and let him know so it can be fixed.");
+        chn.send("That input was not recognized. Enter a valid country and try again. " +
+          "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
         console.log(chalk.yellow("Unmatched country cache key needs custom value: " + chalk.cyan(param)));
       }
     }
@@ -209,14 +236,15 @@ function getCases(chn, param) {
       for (let i = 1; i < worldCacheJSON.length; i++) {
         let chunk = worldCacheJSON[i];
         if (chunk.country.toLowerCase() == param.toLowerCase()) {
-          if(chunk.newcases){
-            var yote = "  ("+chunk.newcases+" today)"
-          } else {var yote = "";}
+          if (chunk.newcases) {
+            var yote = "  (" + chunk.newcases + " today)"
+          } else { var yote = ""; }
           chn.send("Total confirmed cases in **" + chunk.country + ":**  " + chunk.cases + yote);
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead. \nIf it still fails and you know you entered a valid country, tag ethy and let him know!");
+      chn.send("That input was not recognized. Try entering the country abbreviation instead." +
+        "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
@@ -237,14 +265,15 @@ function getDeaths(chn, param) {
         for (let i = 1; i < worldCacheJSON.length; i++) {
           let chunk = worldCacheJSON[i];
           if (chunk.country.toLowerCase() == param.toLowerCase()) {
-            if(chunk.newdeaths){
-              var yote = "  ("+chunk.newdeaths+" today)"
-            } else {var yote = "";}
+            if (chunk.newdeaths) {
+              var yote = "  (" + chunk.newdeaths + " today)"
+            } else { var yote = ""; }
             chn.send("Total confirmed deaths in **" + chunk.country + ":**  " + chunk.deaths + yote);
             return;
           }
         }
-        chn.send("That input was not recognized. If you know you entered a valid country, tag ethy and let him know so it can be fixed.");
+        chn.send("That input was not recognized. Enter a valid country and try again. " +
+          "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
         console.log(chalk.yellow("Unmatched country cache key needs custom value: " + chalk.cyan(param)));
       }
     }
@@ -252,14 +281,15 @@ function getDeaths(chn, param) {
       for (let i = 1; i < worldCacheJSON.length; i++) {
         let chunk = worldCacheJSON[i];
         if (chunk.country.toLowerCase() == param.toLowerCase()) {
-          if(chunk.newdeaths){
-            var yote = "  ("+chunk.newdeaths+" today)"
-          } else {var yote = "";}
+          if (chunk.newdeaths) {
+            var yote = "  (" + chunk.newdeaths + " today)"
+          } else { var yote = ""; }
           chn.send("Total confirmed deaths in **" + chunk.country + ":**  " + chunk.deaths + yote);
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead. \nIf it still fails and you know you entered a valid country, tag ethy and let him know!");
+      chn.send("That input was not recognized. Try entering the country abbreviation instead." +
+        "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
@@ -280,7 +310,7 @@ function getRecoveries(chn, param) {
         for (let i = 1; i < worldCacheJSON.length; i++) {
           let chunk = worldCacheJSON[i];
           if (chunk.country.toLowerCase() == param.toLowerCase()) {
-            if(chunk.recovered){
+            if (chunk.recovered) {
               chn.send("Total confirmed recoveries in **" + chunk.country + ":**  " + chunk.recovered);
             } else {
               chn.send("No recoveries reported yet.")
@@ -288,7 +318,8 @@ function getRecoveries(chn, param) {
             return;
           }
         }
-        chn.send("That input was not recognized. If you know you entered a valid country, tag ethy and let him know so it can be fixed.");
+        chn.send("That input was not recognized. Enter a valid country and try again. " +
+          "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
         console.log(chalk.yellow("Unmatched country cache key needs custom value: " + chalk.cyan(param)));
       }
     }
@@ -296,7 +327,7 @@ function getRecoveries(chn, param) {
       for (let i = 1; i < worldCacheJSON.length; i++) {
         let chunk = worldCacheJSON[i];
         if (chunk.country.toLowerCase() == param.toLowerCase()) {
-          if(chunk.recovered){
+          if (chunk.recovered) {
             chn.send("Total confirmed recoveries in **" + chunk.country + ":**  " + chunk.recovered);
           } else {
             chn.send("No recoveries reported yet.")
@@ -304,12 +335,13 @@ function getRecoveries(chn, param) {
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead. \nIf it still fails and you know you entered a valid country, tag ethy and let him know!");
+      chn.send("That input was not recognized. Try entering the country abbreviation instead." +
+        "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
   else {
-    chn.send("Total confirmed cases worldwide: " + worldCacheJSON[0].totalCases)
+    chn.send("Total confirmed recoveries worldwide: " + worldCacheJSON[0].totalRecovered)
   }
 }
 
@@ -339,9 +371,8 @@ function getUsCases(chn, state) {
     console.log(chalk.green("cases called on: " + chalk.yellow(state)));
   }
   else {
-    //national stats if no state provided
-    chn.send("__United States__:\n" + generalJSON.cases + "\n" + generalJSON.deaths)
-    console.log(chalk.green("national cases called!"));
+    chn.send("That input was not recognized. Enter a valid US state and try again.");
+    console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
   }
 }
 
@@ -399,7 +430,7 @@ function updateCache() {
     statesJSON = JSON.parse(fs.readFileSync("CDC_data.json", "utf8"));
     generalJSON = JSON.parse(fs.readFileSync("GeneralStats.json", "utf8"));
     worldCacheJSON = JSON.parse(fs.readFileSync("WorldStats.json", "utf8"));
-  }, 2500);
+  }, 15000); // wait for data collection to finish before reading files again
 }
 
 
