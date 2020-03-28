@@ -42,8 +42,7 @@ shortcountrynames.names["UK"] = 'UK'
 let keys = JSON.parse(fs.readFileSync('keys.json', 'utf8'));
 
 // Stats caches
-let statesJSON = JSON.parse(fs.readFileSync("CDC_data.json", "utf8"));
-let generalJSON = JSON.parse(fs.readFileSync("GeneralStats.json", "utf8"));
+let statesJSON = JSON.parse(fs.readFileSync("USstats.json", "utf8"));
 let worldCacheJSON = JSON.parse(fs.readFileSync("WorldStats.json", "utf8"));
 
 // Set the prefix
@@ -164,6 +163,11 @@ async function commands(message) {
     } else if (command === 'recoveries' || command === 'recovered' || command === 'r' || command === 'recover' || command === 'recovery') {
       console.log(chalk.green(chalk.blue("recoveries") + " command called by " + chalk.yellow(msg.author.username) + " in: " + chalk.cyan(message.guild.name)));
       getRecoveries(channel, combinedParams);
+
+      // Get info for US states
+    } else if (command === 'state' || command === 'states' || command === 's' || command === 'st') {
+      console.log(chalk.green(chalk.blue("State") + " command called by " + chalk.yellow(msg.author.username) + " in: " + chalk.cyan(message.guild.name) + " on: " + chalk.cyan(combinedParams)));
+      getUsCases(channel, combinedParams);
 
       // Help
     } else if (command === 'help' || !command) {
@@ -349,30 +353,42 @@ function getRecoveries(chn, param) {
 
 // not active
 function getUsCases(chn, state) {
-  let cases = '';
   let foundState = false;
   // Convert abbreviated state input to full name for json access
   if (state && state.length == 2) {
     state = abbrState(state.toUpperCase(), "name")
   }
   if (state) {
-    for (let j = 0, len = statesJSON.data.length; j < len; j++) {
-      if (statesJSON.data[j]["Jurisdiction"] && (statesJSON.data[j]["Jurisdiction"].toUpperCase() == state.toUpperCase())) {
-        cases = statesJSON.data[j]["Cases Reported"];
+    for (let j = 0; j < statesJSON.length; j++) {
+      if (statesJSON[j]["state"] && (statesJSON[j]["state"].toUpperCase() == state.toUpperCase())) {
+        state = statesJSON[j].state;
+        let chunk = statesJSON[j];
+        if (chunk.newcases) {
+          var yote = "  (" + chunk.newcases + " today)"
+        } else { var yote = ""; }
+        if (chunk.newdeaths) {
+          var yote2 = "  (" + chunk.newdeaths + " today)"
+        } else { var yote2 = ""; }
+        var cases = chunk.cases + yote;
+        var deaths = chunk.deaths + yote2;
+        var recovered = (Number(chunk.cases.replace(/,/g, '')) - (Number(chunk.deaths.replace(/,/g, '')) + Number(chunk.activecases.replace(/,/g, ''))));
         foundState = true;
       }
     }
     if (foundState) {
-      chn.send("Confirmed cases in **" + state + ":** " + cases);
+      if (recovered == "0") { recovered = "0 (or not reported)" }
+      chn.send("__**" + state + ":**__ " +
+        "\nCases:  " + cases +
+        "\nDeaths:  " + deaths +
+        "\nRecoveries:  " + recovered);
     }
     else {
-      chn.send("That state wasn't found! Make sure you enter a valid US state and try again.\n(Example:  `.cv cases mn`  for cases in Minnesota)")
+      chn.send("That state wasn't found! Make sure you enter a valid US state and try again.\n(Example:  `.cv state mn`  for data from Minnesota)")
     }
-    console.log(chalk.green("cases called on: " + chalk.yellow(state)));
   }
   else {
     chn.send("That input was not recognized. Enter a valid US state and try again.");
-    console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
+    console.log(chalk.yellow("Unmatched state key value: " + chalk.cyan(state)));
   }
 }
 
@@ -427,8 +443,7 @@ function updateCache() {
   reloader.worldCache();
   setTimeout(function () {
     // Read and parse the refreshed cache
-    statesJSON = JSON.parse(fs.readFileSync("CDC_data.json", "utf8"));
-    generalJSON = JSON.parse(fs.readFileSync("GeneralStats.json", "utf8"));
+    statesJSON = JSON.parse(fs.readFileSync("USstats.json", "utf8"));
     worldCacheJSON = JSON.parse(fs.readFileSync("WorldStats.json", "utf8"));
   }, 15000); // wait for data collection to finish before reading files again
 }
