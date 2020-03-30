@@ -4,8 +4,12 @@ const chalk = require('chalk');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//   This script is used to pull data from the html tables of worldOmeters and store it in a local json file cache   //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+// Collects data for U.S. states
 function usStatsCacher() {
   rp('https://www.worldometers.info/coronavirus/country/us/')
   .then(function (nice) {
@@ -35,7 +39,7 @@ function usStatsCacher() {
   });
 }
 
-
+// Collects data for countries worldwide
 function worldMetersCacher(){
   rp('https://www.worldometers.info/coronavirus/')
   .then(function (nice) {
