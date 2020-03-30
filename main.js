@@ -32,7 +32,7 @@ const client = new Discord.Client();
 const fs = require('fs');
 const chalk = require('chalk');
 const schedule = require('node-schedule');
-const reloader = require('./getDataCDC');
+const reloader = require('./getData');
 const shortcountrynames = require("shortcountrynames")
 
 // Define custom country codes to match input to the data cache key values
@@ -163,7 +163,7 @@ async function commands(message) {
     let combinedParams = (param1 + " " + param2 + " " + param3 + " " + param4).trim();
     
     // Special handling for korea input to check for user friendly input terms
-    if(combinedParams.toLowerCase() === 'korea' || combinedParams.toLowerCase() === 'south korea' ||
+    if(combinedParams.toLowerCase() === 'korea' || combinedParams.toLowerCase() === 'south korea' || combinedParams.toLowerCase() === 'kor' ||
      combinedParams.toLowerCase() === 'skorea' || combinedParams.toLowerCase() === 's korea' || combinedParams.toLowerCase() === 'kr'){combinedParams = 'S. Korea';}
     if(combinedParams.toLowerCase() === 'n korea' || combinedParams.toLowerCase() === 'north korea' ||
      combinedParams.toLowerCase() === 'nkorea' || combinedParams.toLowerCase() === 'nk'){channel.send("North Korea stats are not available."); return;}
