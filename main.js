@@ -161,6 +161,12 @@ async function commands(message) {
     if (code_in[3]) { var param3 = code_in[3] } else { var param3 = "" }
     if (code_in[4]) { var param4 = code_in[4] } else { var param4 = "" }
     let combinedParams = (param1 + " " + param2 + " " + param3 + " " + param4).trim();
+    
+    // Special handling for korea input to check for user friendly input terms
+    if(combinedParams.toLowerCase() === 'korea' || combinedParams.toLowerCase() === 'south korea' ||
+     combinedParams.toLowerCase() === 'skorea' || combinedParams.toLowerCase() === 's korea'){combinedParams = 'S. Korea';}
+    if(combinedParams.toLowerCase() === 'n korea' || combinedParams.toLowerCase() === 'north korea' ||
+     combinedParams.toLowerCase() === 'nkorea' || combinedParams.toLowerCase() === 'nk'){channel.send("North Korea stats are not available."); return;}
 
     // Get cases
     if (command === 'cases' || command === 'case' || command === 'c' || command === 'confirmed') {
