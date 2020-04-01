@@ -169,6 +169,13 @@ async function commands(message) {
       combinedParams.toLowerCase() === 'nkorea' || combinedParams.toLowerCase() === 'nk') { channel.send("North Korea stats are not available."); return; }
     if (combinedParams.toLowerCase() === 'czech' || combinedParams.toLowerCase() === 'czech republic') { channel.send("Use `Czechia` or `cz` for the czech republic. (As listed by the U.N.)"); }
 
+    // Special handling for korea and other inputs to check for user friendly input terms (duplicate check to account for default command input)
+    if (combinedParamsDefault.toLowerCase() === 'korea' || combinedParamsDefault.toLowerCase() === 'south korea' || combinedParamsDefault.toLowerCase() === 'kor' ||
+      combinedParamsDefault.toLowerCase() === 'skorea' || combinedParamsDefault.toLowerCase() === 's korea' || combinedParamsDefault.toLowerCase() === 'kr') { combinedParamsDefault = 'S. Korea'; }
+    if (combinedParamsDefault.toLowerCase() === 'n korea' || combinedParamsDefault.toLowerCase() === 'north korea' ||
+      combinedParamsDefault.toLowerCase() === 'nkorea' || combinedParamsDefault.toLowerCase() === 'nk') { channel.send("North Korea stats are not available."); return; }
+    if (combinedParamsDefault.toLowerCase() === 'czech' || combinedParamsDefault.toLowerCase() === 'czech republic') { channel.send("Use `Czechia` or `cz` for the czech republic. (As listed by the U.N.)"); }
+
     // Get cases
     if (command === 'cases' || command === 'case' || command === 'c' || command === 'confirmed') {
       //getUsCases(channel, code_in[1]);
