@@ -7,8 +7,9 @@
 //  \_____|  \___/    \_/   |_|  \__,_|               |_|   /_/         |____/   \___/   \__|
 //
 //
-// Ver: 1.0.0
+// Ver: 1.1.0
 // Started: 3/23/2020
+// Last version published: 4/1/2020
 // Written by: Logan (EthyMoney)
 // License: MIT
 // Description: A simple discord bot with functionality related to statistics and news reporting for the Novel Coronavirus pandemic of 2020 (Officially named Covid-19)
@@ -89,13 +90,10 @@ client.on('guildCreate', guild => {
 });
 
 client.on('message', message => {
-
   // Check for Ghost users
   if (message.author === null) return;
-
   // Check for, and ignore DM channels (this is a safety precaution)
   if (message.channel.type !== 'text') return;
-
   // Forward message to the commands processor
   commands(message, false);
 });
@@ -156,17 +154,20 @@ async function commands(message) {
     // Check and process commands
     //
 
+    if (code_in[0]) { var param0 = code_in[0] } else { var param0 = "" }
     if (code_in[1]) { var param1 = code_in[1] } else { var param1 = "" }
     if (code_in[2]) { var param2 = code_in[2] } else { var param2 = "" }
     if (code_in[3]) { var param3 = code_in[3] } else { var param3 = "" }
     if (code_in[4]) { var param4 = code_in[4] } else { var param4 = "" }
     let combinedParams = (param1 + " " + param2 + " " + param3 + " " + param4).trim();
-    
-    // Special handling for korea input to check for user friendly input terms
-    if(combinedParams.toLowerCase() === 'korea' || combinedParams.toLowerCase() === 'south korea' ||
-     combinedParams.toLowerCase() === 'skorea' || combinedParams.toLowerCase() === 's korea'){combinedParams = 'S. Korea';}
-    if(combinedParams.toLowerCase() === 'n korea' || combinedParams.toLowerCase() === 'north korea' ||
-     combinedParams.toLowerCase() === 'nkorea' || combinedParams.toLowerCase() === 'nk'){channel.send("North Korea stats are not available."); return;}
+    let combinedParamsDefault = (param0 + " " + param1 + " " + param2 + " " + param3 + " " + param4).trim();
+
+    // Special handling for korea and other inputs to check for user friendly input terms
+    if (combinedParams.toLowerCase() === 'korea' || combinedParams.toLowerCase() === 'south korea' ||
+      combinedParams.toLowerCase() === 'skorea' || combinedParams.toLowerCase() === 's korea') { combinedParams = 'S. Korea'; }
+    if (combinedParams.toLowerCase() === 'n korea' || combinedParams.toLowerCase() === 'north korea' ||
+      combinedParams.toLowerCase() === 'nkorea' || combinedParams.toLowerCase() === 'nk') { channel.send("North Korea stats are not available."); return; }
+    if (combinedParams.toLowerCase() === 'czech' || combinedParams.toLowerCase() === 'czech republic') { channel.send("Use `Czechia` or `cz` for the czech republic. (As listed by the U.N.)"); }
 
     // Get cases
     if (command === 'cases' || command === 'case' || command === 'c' || command === 'confirmed') {
@@ -195,17 +196,29 @@ async function commands(message) {
       getUsCases(channel, combinedParams);
 
       // Help
-    } else if (command === 'help' || !command) {
+    } else if (command === 'help' || command === '?') {
       console.log(chalk.cyan("help command deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
-      channel.send("Hi there! This bot is a very rapidly changing **work in progress** and just recently began development.\n"
-        + "Basic stats for countries accross the world are available currently. More details and enahanced summary reports will be added soon!\n\n" +
-        "**Here's how to use what's available so far:**\n" +
-        ":small_blue_diamond: To see total cases worldwide, use  `.cv cases`\n" +
-        ":small_blue_diamond: To see total deaths worldwide, use  `.cv deaths`\n" +
-        ":small_blue_diamond: To see total recoveries worldwide, use  `.cv recoveries`\n" +
-        ":small_blue_diamond: To see total cases/deaths/recoveries in a particular country, simply add the country after the command like this: `.cv deaths <country>`\n" +
-        ":pencil: Here's an example command:  `.cv cases us`  => display confirmed cases in the United States\n" +
-        ":pencil: NOTE: Currently supported command prefixes are either `.cv` or `-c`");
+      channel.send("Hi there! This bot is a very rapidly changing **work in progress**, so please be nice to it!\n"
+        + "Basic stats for the world, countries, and US states are available currently with more new features on the way!\n\n" +
+        "**__Commands and usage:__**\n" +
+        ":small_blue_diamond: To see a situation summary for worldwide, simply use  `.cv`\n" +
+        ":small_blue_diamond: For a specific country, use  `.cv <country>`\n" +
+        ":small_blue_diamond: For a US state, use  `.cv s <state>`\n" +
+        ":small_blue_diamond: For countries, you can also view cases/deaths/recoveries individually using  `.cv <c/d/r> <country>`\n\n" +
+        "**__Examples:__**\n" +
+        "`.cv de`      => display summary for Germany\n" +
+        "`.cv c us`  => display only cases for United States\n" +
+        "`.cv d it`  => display only deaths for italy\n" +
+        "`.cv s mn`  => display summary for the state of Minnesota\n" +
+        "`.cv d it`  => display only deaths for italy\n" +
+        "`.cv r`        => display only recoveries for worldwide\n\n" +
+        "**__Notes and extras:__**\n" +
+        "• You can use either the 2-letter abbreviation, or the full name for countries and states.\n" +
+        "• You can use either `.cv` OR `-c` as the prefix for commands, so take your pick!\n" +
+        "• This bot is open source and frequently updated! You can get the github link using `.cv source`.\n" +
+        "• Spare some change to support Covid-19 releif efforts? Use `.cv donate` to get a link to official W.H.O. Solidarity Response Fund.\n" +
+        "• Last thing I swear.. Please share this bot if you like it! You can get the invite link to add the bot to your other servers using `.cv invite`.\n"
+      );
 
       // Github
     } else if (command === 'github' || command === 'source' || command === 'code') {
@@ -225,6 +238,10 @@ async function commands(message) {
       console.log(chalk.cyan("Donation link deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
     }
 
+    // Default to the summary command if none is provided
+    else {
+      getSummary(channel, combinedParamsDefault);
+    }
   }
 }
 
@@ -241,7 +258,8 @@ async function commands(message) {
 
 function getCases(chn, param) {
   let paramBackup = param;
-  if (param) {
+  if (param && !(param.toLowerCase() === 'world' || param.toLowerCase() === 'worldwide' || param.toLowerCase() === 'global'
+    || param.toLowerCase() === 'total' || param.toLowerCase() === 'all')) {
     // Convert abbreviated country input to full name for json access
     if (param && param.length == 2) {
       param = shortcountrynames.to_name(param.toUpperCase());
@@ -286,7 +304,8 @@ function getCases(chn, param) {
 
 function getDeaths(chn, param) {
   let paramBackup = param;
-  if (param) {
+  if (param && !(param.toLowerCase() === 'world' || param.toLowerCase() === 'worldwide' || param.toLowerCase() === 'global'
+    || param.toLowerCase() === 'total' || param.toLowerCase() === 'all')) {
     // Convert abbreviated country input to full name for json access
     if (param && param.length == 2) {
       param = shortcountrynames.to_name(param.toUpperCase());
@@ -331,7 +350,8 @@ function getDeaths(chn, param) {
 
 function getRecoveries(chn, param) {
   let paramBackup = param;
-  if (param) {
+  if (param && !(param.toLowerCase() === 'world' || param.toLowerCase() === 'worldwide' || param.toLowerCase() === 'global'
+    || param.toLowerCase() === 'total' || param.toLowerCase() === 'all')) {
     // Convert abbreviated country input to full name for json access
     if (param && param.length == 2) {
       param = shortcountrynames.to_name(param.toUpperCase());
@@ -383,7 +403,8 @@ function getSummary(chn, param) {
   let recoveries = '';
   let active = '';
   let critical = '';
-  if (param) {
+  if (param && !(param.toLowerCase() === 'world' || param.toLowerCase() === 'worldwide' || param.toLowerCase() === 'global'
+    || param.toLowerCase() === 'total' || param.toLowerCase() === 'all')) {
     // Convert abbreviated country input to full name for json access
     if (param && param.length == 2) {
       param = shortcountrynames.to_name(param.toUpperCase());
@@ -447,10 +468,10 @@ function getSummary(chn, param) {
   }
   else {
     chn.send("**__Worldwide:__**\n" +
-      "Cases: " + worldCacheJSON[0].totalCases + "\n" +
-      "Deaths: " + worldCacheJSON[0].totalDeaths + "\n" +
-      "Recoveries: " + worldCacheJSON[0].totalRecovered + "\n" +
-      "Active Cases: " + worldCacheJSON[0].totalActiveCases);
+      "Cases:                 " + worldCacheJSON[0].totalCases + "\n" +
+      "Deaths:               " + worldCacheJSON[0].totalDeaths + "\n" +
+      "Recoveries:        " + worldCacheJSON[0].totalRecovered + "\n" +
+      "Active Cases:    " + worldCacheJSON[0].totalActiveCases);
   }
 }
 
@@ -496,14 +517,6 @@ function getUsCases(chn, state) {
     chn.send("That input was not recognized. Enter a valid US state and try again.");
     console.log(chalk.yellow("Unmatched state key value: " + chalk.cyan(state)));
   }
-}
-
-
-
-// not active
-function getUsDeaths(chn) {
-  chn.send("U.S. " + generalJSON.deaths + "\n(Support for localized death stats is coming soon)")
-  console.log(chalk.magenta("deaths called!"));
 }
 
 
