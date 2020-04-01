@@ -1,10 +1,10 @@
 # Covid-19
 Description: Covid-19 is a simple discord bot with functionality related to live statistics and news reporting for the Novel Coronavirus pandemic of 2020 (Officially named Covid-19).
 
-[Click here to add the bot to your discord server!](https://www.google.com)
+[Click here to add the bot to your discord server!](https://discordapp.com/oauth2/authorize?client_id=691863138559328327&scope=bot&permissions=67488832)
 <br><br>
 
-# Commands and usage:
+## Commands and usage:
 * To see a situation summary for worldwide, simply use  `.cv`
 * For a specific country, use  `.cv <country>`
 * For a US state, use  `.cv s <state>`
