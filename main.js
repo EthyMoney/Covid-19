@@ -33,7 +33,7 @@ const client = new Discord.Client();
 const fs = require('fs');
 const chalk = require('chalk');
 const schedule = require('node-schedule');
-const reloader = require('./getDataCDC');
+const reloader = require('./getData');
 const shortcountrynames = require("shortcountrynames")
 
 // Define custom country codes to match input to the data cache key values
@@ -163,8 +163,8 @@ async function commands(message) {
     let combinedParamsDefault = (param0 + " " + param1 + " " + param2 + " " + param3 + " " + param4).trim();
 
     // Special handling for korea and other inputs to check for user friendly input terms
-    if (combinedParams.toLowerCase() === 'korea' || combinedParams.toLowerCase() === 'south korea' ||
-      combinedParams.toLowerCase() === 'skorea' || combinedParams.toLowerCase() === 's korea') { combinedParams = 'S. Korea'; }
+    if (combinedParams.toLowerCase() === 'korea' || combinedParams.toLowerCase() === 'south korea' || combinedParams.toLowerCase() === 'kor' ||
+      combinedParams.toLowerCase() === 'skorea' || combinedParams.toLowerCase() === 's korea' || combinedParams.toLowerCase() === 'kr') { combinedParams = 'S. Korea'; }
     if (combinedParams.toLowerCase() === 'n korea' || combinedParams.toLowerCase() === 'north korea' ||
       combinedParams.toLowerCase() === 'nkorea' || combinedParams.toLowerCase() === 'nk') { channel.send("North Korea stats are not available."); return; }
     if (combinedParams.toLowerCase() === 'czech' || combinedParams.toLowerCase() === 'czech republic') { channel.send("Use `Czechia` or `cz` for the czech republic. (As listed by the U.N.)"); }
