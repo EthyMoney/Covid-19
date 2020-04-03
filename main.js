@@ -81,7 +81,7 @@ client.on('ready', () => {
   console.log(chalk.greenBright(`Logged in as ${client.user.tag}!`));
   updateCache(); //refresh cache on startup right away
   // Display help command on bot's status
-  client.user.setActivity('.cv help');
+  setActivity('.cv help', { type: 'WATCHING' })
 });
 
 // Logs additions of new servers
@@ -283,8 +283,7 @@ function getCases(chn, param) {
             return;
           }
         }
-        chn.send("That input was not recognized. Enter a valid country and try again. " +
-          "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
+        chn.send("That input was not recognized. Try entering the full name of the country instead.");
         console.log(chalk.yellow("Unmatched country cache key needs custom value: " + chalk.cyan(param)));
       }
     }
@@ -299,8 +298,7 @@ function getCases(chn, param) {
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead." +
-        "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
+      chn.send("That input was not recognized. Try entering the country abbreviation instead.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
@@ -329,8 +327,7 @@ function getDeaths(chn, param) {
             return;
           }
         }
-        chn.send("That input was not recognized. Enter a valid country and try again. " +
-          "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
+        chn.send("That input was not recognized. Try entering the full name of the country instead.");
         console.log(chalk.yellow("Unmatched country cache key needs custom value: " + chalk.cyan(param)));
       }
     }
@@ -345,8 +342,7 @@ function getDeaths(chn, param) {
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead." +
-        "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
+      chn.send("That input was not recognized. Try entering the country abbreviation instead.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
@@ -376,8 +372,7 @@ function getRecoveries(chn, param) {
             return;
           }
         }
-        chn.send("That input was not recognized. Enter a valid country and try again. " +
-          "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
+        chn.send("That input was not recognized. Try entering the full name of the country instead.");
         console.log(chalk.yellow("Unmatched country cache key needs custom value: " + chalk.cyan(param)));
       }
     }
@@ -393,8 +388,7 @@ function getRecoveries(chn, param) {
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead." +
-        "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
+      chn.send("That input was not recognized. Try entering the country abbreviation instead.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
@@ -441,8 +435,7 @@ function getSummary(chn, param) {
             return;
           }
         }
-        chn.send("That input was not recognized. Enter a valid country and try again. " +
-          "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
+        chn.send("That input was not recognized. Try entering the full name of the country instead.");
         console.log(chalk.yellow("Unmatched country cache key needs custom value: " + chalk.cyan(param)));
       }
     }
@@ -470,8 +463,7 @@ function getSummary(chn, param) {
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead." +
-        "\nIf you know you entered a valid country, please be patient for this to be fixed. This occurance has been logged and will be reviewed.");
+      chn.send("That input was not recognized. Try entering the country abbreviation instead.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
@@ -519,11 +511,13 @@ function getUsCases(chn, state) {
         "\nRecoveries:       " + numberWithCommas(recovered));
     }
     else {
-      chn.send("That state wasn't found! Make sure you enter a valid US state and try again.\n(Example:  `.cv state mn`  for data from Minnesota)")
+      chn.send("That state wasn't found. Make sure you enter a valid US state and try again.\n(Example:  `.cv s mn`  for data from Minnesota)\n" +
+      "If you are trying to lookup a country, just use `.cv <country`.");
     }
   }
   else {
-    chn.send("That input was not recognized. Enter a valid US state and try again.");
+    chn.send("That input was not recognized. Enter a valid US state and try again.\n" +
+    "If you are trying to lookup a country, just use `.cv <country`.");
     console.log(chalk.yellow("Unmatched state key value: " + chalk.cyan(state)));
   }
 }
