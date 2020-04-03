@@ -94,6 +94,8 @@ client.on('message', message => {
   if (message.author === null) return;
   // Check for, and ignore DM channels (this is a safety precaution)
   if (message.channel.type !== 'text') return;
+  // Check for, and ignore any bots (another safety precaution)
+  if (message.author.bot || message.author == client.user) return;
   // Forward message to the commands processor
   commands(message, false);
 });
