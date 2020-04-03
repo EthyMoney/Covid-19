@@ -64,7 +64,7 @@ try {
 const prefix = ['-c', '.cv', '-C', '.CV', '.Cv', '.cV'];
 
 // Scheduled updates of data
-let updateStatesStats = schedule.scheduleJob('0 * * * *', updateCache); // update data caches every hour
+let updateStatesStats = schedule.scheduleJob('*/30 * * * *', updateCache); // update data caches at every half hour
 
 
 
