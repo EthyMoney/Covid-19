@@ -81,7 +81,7 @@ client.on('ready', () => {
   console.log(chalk.greenBright(`Logged in as ${client.user.tag}!`));
   updateCache(); //refresh cache on startup right away
   // Display help command on bot's status
-  setActivity('.cv help', { type: 'WATCHING' })
+  client.user.setActivity('.cv help', { type: 'WATCHING' })
 });
 
 // Logs additions of new servers
@@ -512,12 +512,12 @@ function getUsCases(chn, state) {
     }
     else {
       chn.send("That state wasn't found. Make sure you enter a valid US state and try again.\n(Example:  `.cv s mn`  for data from Minnesota)\n" +
-      "If you are trying to lookup a country, just use `.cv <country`.");
+        "If you are trying to lookup a country, just use `.cv <country`.");
     }
   }
   else {
     chn.send("That input was not recognized. Enter a valid US state and try again.\n" +
-    "If you are trying to lookup a country, just use `.cv <country`.");
+      "If you are trying to lookup a country, just use `.cv <country`.");
     console.log(chalk.yellow("Unmatched state key value: " + chalk.cyan(state)));
   }
 }
@@ -582,58 +582,17 @@ function numberWithCommas(x) {
 // Utility function to convert state abbreviations
 function abbrState(input, to) {
   var states = [
-    ['Arizona', 'AZ'],
-    ['Alabama', 'AL'],
-    ['Alaska', 'AK'],
-    ['Arkansas', 'AR'],
-    ['California', 'CA'],
-    ['Colorado', 'CO'],
-    ['Connecticut', 'CT'],
-    ['Delaware', 'DE'],
-    ['Florida', 'FL'],
-    ['Georgia', 'GA'],
-    ['Hawaii', 'HI'],
-    ['Idaho', 'ID'],
-    ['Illinois', 'IL'],
-    ['Indiana', 'IN'],
-    ['Iowa', 'IA'],
-    ['Kansas', 'KS'],
-    ['Kentucky', 'KY'],
-    ['Louisiana', 'LA'],
-    ['Maine', 'ME'],
-    ['Maryland', 'MD'],
-    ['Massachusetts', 'MA'],
-    ['Michigan', 'MI'],
-    ['Minnesota', 'MN'],
-    ['Mississippi', 'MS'],
-    ['Missouri', 'MO'],
-    ['Montana', 'MT'],
-    ['Nebraska', 'NE'],
-    ['Nevada', 'NV'],
-    ['New Hampshire', 'NH'],
-    ['New Jersey', 'NJ'],
-    ['New Mexico', 'NM'],
-    ['New York', 'NY'],
-    ['North Carolina', 'NC'],
-    ['North Dakota', 'ND'],
-    ['Ohio', 'OH'],
-    ['Oklahoma', 'OK'],
-    ['Oregon', 'OR'],
-    ['Pennsylvania', 'PA'],
-    ['Rhode Island', 'RI'],
-    ['South Carolina', 'SC'],
-    ['South Dakota', 'SD'],
-    ['Tennessee', 'TN'],
-    ['Texas', 'TX'],
-    ['Utah', 'UT'],
-    ['Vermont', 'VT'],
-    ['Virginia', 'VA'],
-    ['Washington', 'WA'],
-    ['West Virginia', 'WV'],
-    ['Wisconsin', 'WI'],
-    ['Wyoming', 'WY'],
+    ['Arizona', 'AZ'], ['Alabama', 'AL'], ['Alaska', 'AK'], ['Arkansas', 'AR'], ['California', 'CA'], ['Colorado', 'CO'],
+    ['Connecticut', 'CT'], ['Delaware', 'DE'], ['Florida', 'FL'], ['Georgia', 'GA'], ['Hawaii', 'HI'],
+    ['Idaho', 'ID'], ['Illinois', 'IL'], ['Indiana', 'IN'], ['Iowa', 'IA'], ['Kansas', 'KS'], ['Kentucky', 'KY'],
+    ['Louisiana', 'LA'], ['Maine', 'ME'], ['Maryland', 'MD'], ['Massachusetts', 'MA'], ['Michigan', 'MI'],
+    ['Minnesota', 'MN'], ['Mississippi', 'MS'], ['Missouri', 'MO'], ['Montana', 'MT'], ['Nebraska', 'NE'],
+    ['Nevada', 'NV'], ['New Hampshire', 'NH'], ['New Jersey', 'NJ'], ['New Mexico', 'NM'], ['New York', 'NY'],
+    ['North Carolina', 'NC'], ['North Dakota', 'ND'], ['Ohio', 'OH'], ['Oklahoma', 'OK'], ['Oregon', 'OR'],
+    ['Pennsylvania', 'PA'], ['Rhode Island', 'RI'], ['South Carolina', 'SC'], ['South Dakota', 'SD'],
+    ['Tennessee', 'TN'], ['Texas', 'TX'], ['Utah', 'UT'], ['Vermont', 'VT'], ['Virginia', 'VA'],
+    ['Washington', 'WA'], ['West Virginia', 'WV'], ['Wisconsin', 'WI'], ['Wyoming', 'WY'],
   ];
-
   if (to == 'abbr') {
     input = input.replace(/\w\S*/g, function (txt) { return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase(); });
     for (i = 0; i < states.length; i++) {
