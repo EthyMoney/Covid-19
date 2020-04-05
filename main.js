@@ -226,7 +226,8 @@ async function commands(message) {
         "• You can use either `.cv` OR `-c` as the prefix for commands, so take your pick!\n" +
         "• This bot is open source and frequently updated! You can get the github link using `.cv source`.\n" +
         "• Spare some change to support Covid-19 releif efforts? Use `.cv donate` to get a link to official W.H.O. Solidarity Response Fund.\n" +
-        "• Last thing I swear.. Please share this bot if you like it! You can get the invite link to add the bot to your other servers using `.cv invite`.\n"
+        "• Need a reminder of these commands? You can show this help message again any time by using `.cv help`.\n" +
+        "• One more thing... Please share this bot if you like it! You can get the invite link to add the bot to your other servers using `.cv invite`.\n"
       );
 
       // Github
@@ -298,7 +299,7 @@ function getCases(chn, param) {
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead.");
+      chn.send("That input was not recognized. Try entering the 2-letter country abbreviation instead.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
@@ -342,7 +343,7 @@ function getDeaths(chn, param) {
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead.");
+      chn.send("That input was not recognized. Try entering the 2-letter country abbreviation instead.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
@@ -388,7 +389,7 @@ function getRecoveries(chn, param) {
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead.");
+      chn.send("That input was not recognized. Try entering the 2-letter country abbreviation instead.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
@@ -421,11 +422,11 @@ function getSummary(chn, param) {
             if (chunk.newdeaths) {
               var yote2 = "  (" + chunk.newdeaths + " today)"
             } else { var yote2 = ""; }
-            cases = chunk.cases + yote;
-            deaths = chunk.deaths + yote2;
-            recoveries = chunk.recovered;
-            active = chunk.activecases;
-            critical = chunk.criticalcases;
+            if (chunk.cases === "") { cases = 0; } else { cases = chunk.cases + yote; }
+            if (chunk.deaths === "") { deaths = 0; } else { deaths = chunk.deaths + yote2; }
+            if (chunk.recovered === "") { recoveries = 0; } else { recoveries = chunk.recovered; }
+            if (chunk.activecases === "") { active = 0; } else { active = chunk.activecases; }
+            if (chunk.criticalcases === "") { critical = 0; } else { critical = chunk.criticalcases; }
             chn.send("**__" + chunk.country + ":__**\n" +
               "Total Cases:       " + cases + "\n" +
               "Active Cases:     " + active + "\n" +
@@ -449,11 +450,11 @@ function getSummary(chn, param) {
           if (chunk.newdeaths) {
             var yote2 = "  (" + chunk.newdeaths + " today)"
           } else { var yote2 = ""; }
-          cases = chunk.cases + yote;
-          deaths = chunk.deaths + yote2;
-          recoveries = chunk.recovered;
-          active = chunk.activecases;
-          critical = chunk.criticalcases;
+          if (chunk.cases === "") { cases = 0; } else { cases = chunk.cases + yote; }
+          if (chunk.deaths === "") { deaths = 0; } else { deaths = chunk.deaths + yote2; }
+          if (chunk.recovered === "") { recoveries = 0; } else { recoveries = chunk.recovered; }
+          if (chunk.activecases === "") { active = 0; } else { active = chunk.activecases; }
+          if (chunk.criticalcases === "") { critical = 0; } else { critical = chunk.criticalcases; }
           chn.send("**__" + chunk.country + ":__**\n" +
             "Total Cases:       " + cases + "\n" +
             "Active Cases:     " + active + "\n" +
@@ -463,7 +464,7 @@ function getSummary(chn, param) {
           return;
         }
       }
-      chn.send("That input was not recognized. Try entering the country abbreviation instead.");
+      chn.send("That input was not recognized. Try entering the 2-letter country abbreviation instead.");
       console.log(chalk.yellow("Unmatched country cache key NAME: " + chalk.cyan(param)));
     }
   }
@@ -511,7 +512,7 @@ function getUsCases(chn, state) {
         "\nRecoveries:       " + numberWithCommas(recovered));
     }
     else {
-      chn.send("That state wasn't found. Make sure you enter a valid US state and try again.\n(Example:  `.cv s mn`  for data from Minnesota)\n" +
+      chn.send("That state wasn't found. Make sure you enter a valid US state using either the 2-letter abbreviation or the full name and try again.\n(Example:  `.cv s mn`  for data from Minnesota)\n" +
         "If you are trying to lookup a country, just use `.cv <country`.");
     }
   }
@@ -565,7 +566,7 @@ function updateCache() {
     // Read and parse the refreshed cache
     statesJSON = JSON.parse(fs.readFileSync("USstats.json", "utf8"));
     worldCacheJSON = JSON.parse(fs.readFileSync("WorldStats.json", "utf8"));
-  }, 15000); // wait for data collection to finish before reading files again
+  }, 30000); // wait for data collection to finish before reading files again
 }
 
 
