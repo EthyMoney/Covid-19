@@ -246,6 +246,11 @@ async function commands(message) {
       channel.send("During this time of critical need, any financial support will go a very long way to help save lives. Here's is a link to donate to the official COVID-19 Solidarity Response Fund: \n" +
         "https://www.who.int/emergencies/diseases/novel-coronavirus-2019/donate");
       console.log(chalk.cyan("Donation link deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
+
+      // Donate to response efforts
+    } else if (command === 'info' || command === 'about' || command === 'stats' || command === 'stat') {
+      console.log(chalk.cyan("Session stats deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
+      postSessionStats(channel);
     }
 
     // Default to the summary command if none is provided
@@ -513,7 +518,7 @@ function getUsCases(chn, state) {
     }
     else {
       chn.send("That state wasn't found. Make sure you enter a valid US state using either the 2-letter abbreviation or the full name and try again.\n(Example:  `.cv s mn`  for data from Minnesota)\n" +
-        "If you are trying to lookup a country, just use `.cv <country`.");
+        "If you are trying to lookup a country, just use `.cv <country>`.");
     }
   }
   else {
@@ -521,6 +526,30 @@ function getUsCases(chn, state) {
       "If you are trying to lookup a country, just use `.cv <country`.");
     console.log(chalk.yellow("Unmatched state key value: " + chalk.cyan(state)));
   }
+}
+
+
+
+
+// Post bot session stats and general information
+function postSessionStats(chn) {
+  let users = (client.guilds.cache.reduce(function(sum, guild){ return sum + guild.memberCount;}, 0));
+  const embed = new Discord.MessageEmbed()
+    .setColor('#03fcd7')
+    .setTitle('Covid-19 Bot Information')
+    .setDescription('Covid-19 is a powerful and simple to use bot for checking stats on the Coronavirus pandemic from around the world in real time.')
+    .setThumbnail('https://i.imgur.com/GblpWSq.png')
+    .addFields(
+      { name: '\u200B', value: 'Help Command: `.cv help`' },
+      { name: '\u200B', value: '[Bot Invite](https://discordapp.com/oauth2/authorize?client_id=691863138559328327&scope=bot&permissions=67488832)' },
+      { name: '\u200B', value: '[GitHub Repo](https://github.com/YoloSwagDogDiggity/Covid-19)' },
+      { name: '\u200B', value: '\u200B' },
+      { name: 'Servers', value: client.guilds.cache.size, inline: true },
+      { name: 'Users', value: users, inline: true },
+      { name: 'Uptime', value: Math.trunc(client.uptime / (3600000)) + "hr\n", inline: true },
+    )
+    .setFooter('Covid-19 data provided by World-O-Meter', 'https://i.imgur.com/jnvYxdh.jpg');
+  chn.send(embed);
 }
 
 
