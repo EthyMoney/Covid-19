@@ -18,15 +18,15 @@ function usStatsCacher() {
     let table = dom.window.document.getElementById("usa_table_countries_today").tBodies.item(0).rows;
     for (let i = 0; i < table.length; i++) {
       let cells = table[i].cells;
-      let JSONbuilder2 = {
+      let JSONbuilder = {
         "state": cells[0].textContent.trim(),
         "cases": cells[1].textContent.trim(),
         "newcases": cells[2].textContent.trim(),
-        "deaths": cells[3].textContent.trim(), //deaths number has strange trailing whitespace, so it's trimmed here
+        "deaths": cells[3].textContent.trim(),
         "newdeaths": cells[4].textContent.trim(),
         "activecases": cells[5].textContent.trim()
       }
-      jsonArr.push(JSONbuilder2);
+      jsonArr.push(JSONbuilder);
     }
     fs.writeFile("USstats.json", JSON.stringify(jsonArr), function (err) {
       if (err)
@@ -39,7 +39,7 @@ function usStatsCacher() {
   });
 }
 
-// Collects data for countries worldwide
+// Collects data for countries worldwide and overall global data
 function worldMetersCacher(){
   rp('https://www.worldometers.info/coronavirus/')
   .then(function (nice) {
