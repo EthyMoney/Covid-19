@@ -435,7 +435,7 @@ function getSummary(chn, param) {
             chn.send("**__" + chunk.country + ":__**\n" +
               "Total Cases:       " + cases + "\n" +
               "Active Cases:     " + active + "\n" +
-              "Critcal Cases:     " + critical + "\n" +
+              "Critical Cases:     " + critical + "\n" +
               "Deaths:                " + deaths + "\n" +
               "Recoveries:         " + recoveries);
             return;
