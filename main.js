@@ -38,6 +38,7 @@ const shortcountrynames = require("shortcountrynames")
 
 // Define custom country codes to match input to the data cache key values
 shortcountrynames.names["UK"] = 'UK'
+shortcountrynames.names["EU"] = 'Europe'
 
 // Secret keys and tokens
 let keys = JSON.parse(fs.readFileSync('keys.json', 'utf8'));
@@ -234,6 +235,10 @@ async function commands(message) {
     } else if (command === 'github' || command === 'source' || command === 'code') {
       channel.send("https://github.com/YoloSwagDogDiggity/Covid-19");
       console.log(chalk.cyan("Github repo deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
+
+      // Github
+    } else if (command === 'time' || command === 'next' || command === 'refresh') {
+      channel.send(timeUntilDayReset());
 
       // Invite
     } else if (command === 'invite' || command === 'add' || command === 'join') {
@@ -435,7 +440,7 @@ function getSummary(chn, param) {
             chn.send("**__" + chunk.country + ":__**\n" +
               "Total Cases:       " + cases + "\n" +
               "Active Cases:     " + active + "\n" +
-              "Critical Cases:     " + critical + "\n" +
+              "Critical Cases:    " + critical + "\n" +
               "Deaths:                " + deaths + "\n" +
               "Recoveries:         " + recoveries);
             return;
@@ -463,7 +468,7 @@ function getSummary(chn, param) {
           chn.send("**__" + chunk.country + ":__**\n" +
             "Total Cases:       " + cases + "\n" +
             "Active Cases:     " + active + "\n" +
-            "Critcal Cases:     " + critical + "\n" +
+            "Critical Cases:    " + critical + "\n" +
             "Deaths:                " + deaths + "\n" +
             "Recoveries:         " + recoveries);
           return;
@@ -474,11 +479,29 @@ function getSummary(chn, param) {
     }
   }
   else {
-    chn.send("**__Worldwide:__**\n" +
-      "Cases:                 " + worldCacheJSON[0].totalCases + "\n" +
-      "Deaths:               " + worldCacheJSON[0].totalDeaths + "\n" +
-      "Recoveries:        " + worldCacheJSON[0].totalRecovered + "\n" +
-      "Active Cases:    " + worldCacheJSON[0].totalActiveCases);
+    for (let i = 1; i < worldCacheJSON.length; i++) {
+      let chunk = worldCacheJSON[i];
+      if (chunk.country.toLowerCase() == "world") {
+        if (chunk.newcases) {
+          var yote = "  (" + chunk.newcases + " today)"
+        } else { var yote = ""; }
+        if (chunk.newdeaths) {
+          var yote2 = "  (" + chunk.newdeaths + " today)"
+        } else { var yote2 = ""; }
+        if (chunk.cases === "") { cases = 0; } else { cases = chunk.cases + yote; }
+        if (chunk.deaths === "") { deaths = 0; } else { deaths = chunk.deaths + yote2; }
+        if (chunk.recovered === "") { recoveries = 0; } else { recoveries = chunk.recovered; }
+        if (chunk.activecases === "") { active = 0; } else { active = chunk.activecases; }
+        if (chunk.criticalcases === "") { critical = 0; } else { critical = chunk.criticalcases; }
+        chn.send("**__Worldwide:__**\n" +
+          "Total Cases:       " + cases + "\n" +
+          "Active Cases:     " + active + "\n" +
+          "Critical Cases:    " + critical + "\n" +
+          "Deaths:                " + deaths + "\n" +
+          "Recoveries:         " + recoveries);
+        return;
+      }
+    }
   }
 }
 
@@ -533,7 +556,7 @@ function getUsCases(chn, state) {
 
 // Post bot session stats and general information
 function postSessionStats(chn) {
-  let users = (client.guilds.cache.reduce(function(sum, guild){ return sum + guild.memberCount;}, 0));
+  let users = (client.guilds.cache.reduce(function (sum, guild) { return sum + guild.memberCount; }, 0));
   const embed = new Discord.MessageEmbed()
     .setColor('#03fcd7')
     .setTitle('Covid-19 Bot Information')
@@ -596,6 +619,19 @@ function updateCache() {
     statesJSON = JSON.parse(fs.readFileSync("USstats.json", "utf8"));
     worldCacheJSON = JSON.parse(fs.readFileSync("WorldStats.json", "utf8"));
   }, 30000); // wait for data collection to finish before reading files again
+}
+
+
+
+// Get time until next reset of daily stats
+function timeUntilDayReset() {
+  let now = new Date();
+  let hr = now.getHours();
+  let min = now.getMinutes();
+  let hrsLeft = undefined;
+  let minsLeft = 60 - min;
+  (18 - hr <= 0) ? (hrsLeft = 24 + (18 - hr)) : (hrsLeft = 18 - hr)
+  return responseString = `Todays counts will reset in ${hrsLeft}hrs, ${minsLeft}mins.`;
 }
 
 
