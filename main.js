@@ -208,22 +208,27 @@ async function commands(message) {
       // Help
     } else if (command === 'help' || command === '?') {
       console.log(chalk.cyan("help command deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
-      channel.send("Hi there! This bot is a very rapidly changing **work in progress**, so please be nice to it!\n"
-        + "Basic stats for the world, countries, and US states are available currently with more new features on the way!\n\n" +
+      channel.send("Hi there! This bot is rapidly changing with new features and fixes, so check back here often so you don't miss anything!\n\n" +
         "**__Commands and usage:__**\n" +
         ":small_blue_diamond: To see a situation summary for worldwide, simply use  `.cv`\n" +
         ":small_blue_diamond: For a specific country, use  `.cv <country>`\n" +
+        ":small_blue_diamond: For a whole continent, use  `.cv <continent>`\n" +
         ":small_blue_diamond: For a US state, use  `.cv s <state>`\n" +
-        ":small_blue_diamond: For countries, you can also view cases/deaths/recoveries individually using  `.cv <c/d/r> <country>`\n\n" +
+        ":small_blue_diamond: For countries and continents, you can also view cases/deaths/recoveries individually using  `.cv <c/d/r> <country>`\n\n" +
         "**__Examples:__**\n" +
+        "`.cv`            => display summary for worldwide\n" +
         "`.cv de`      => display summary for Germany\n" +
         "`.cv c us`  => display only cases for United States\n" +
-        "`.cv d it`  => display only deaths for italy\n" +
+        "`.cv d it`  => display only deaths for Italy\n" +
+        "`.cv d italy`  => also display only deaths for Italy, but using full name for input\n" +
         "`.cv s mn`  => display summary for the state of Minnesota\n" +
-        "`.cv d it`  => display only deaths for italy\n" +
-        "`.cv r`        => display only recoveries for worldwide\n\n" +
+        "`.cv d it`  => display only deaths for Italy\n" +
+        "`.cv r`        => display only recoveries for worldwide\n" +
+        "`.cv north america`  => display summary for North America\n\n" +
         "**__Notes and extras:__**\n" +
         "• You can use either the 2-letter abbreviation, or the full name for countries and states.\n" +
+        "• For continents you must use the FULL name when specifiying them. Examples: North America, Africa...\n" +
+        "• Summary reports have counters for new daily data which resets at the end of the day. You can see when the next reset will occur using `.cv time`.\n" +
         "• You can use either `.cv` OR `-c` as the prefix for commands, so take your pick!\n" +
         "• This bot is open source and frequently updated! You can get the github link using `.cv source`.\n" +
         "• Spare some change to support Covid-19 releif efforts? Use `.cv donate` to get a link to official W.H.O. Solidarity Response Fund.\n" +
@@ -556,7 +561,7 @@ function getUsCases(chn, state) {
   }
   else {
     chn.send("That input was not recognized. Enter a valid US state and try again.\n" +
-      "If you are trying to lookup a country, just use `.cv <country`.");
+      "If you are trying to lookup a country, just use `.cv <country>`.");
     console.log(chalk.yellow("Unmatched state key value: " + chalk.cyan(state)));
   }
 }
