@@ -417,6 +417,8 @@ function getSummary(chn, param) {
   let recoveries = '';
   let active = '';
   let critical = '';
+  let tests = '';
+  let testbypop = '';
   if (param && !(param.toLowerCase() === 'world' || param.toLowerCase() === 'worldwide' || param.toLowerCase() === 'global'
     || param.toLowerCase() === 'total' || param.toLowerCase() === 'all')) {
     // Convert abbreviated country input to full name for json access
@@ -437,12 +439,16 @@ function getSummary(chn, param) {
             if (chunk.recovered === "") { recoveries = 0; } else { recoveries = chunk.recovered; }
             if (chunk.activecases === "") { active = 0; } else { active = chunk.activecases; }
             if (chunk.criticalcases === "") { critical = 0; } else { critical = chunk.criticalcases; }
+            if (chunk.testsperformed === "") { tests = 'n/a'; } else { tests = chunk.testsperformed; }
+            if (chunk.testsperformedbypop === "") { testbypop = 'n/a'; } else { testbypop = chunk.testsperformedbypop; }
             chn.send("**__" + chunk.country + ":__**\n" +
-              "Total Cases:       " + cases + "\n" +
-              "Active Cases:     " + active + "\n" +
-              "Critical Cases:    " + critical + "\n" +
-              "Deaths:                " + deaths + "\n" +
-              "Recoveries:         " + recoveries);
+              "Total Cases:         " + cases + "\n" +
+              "Active Cases:       " + active + "\n" +
+              "Critical Cases:      " + critical + "\n" +
+              "Deaths:                  " + deaths + "\n" +
+              "Recoveries:           " + recoveries + "\n" +
+              "Total Tests:          " + tests + "\n" +
+              "Tests/1M Pop:     " + testbypop);
             return;
           }
         }
@@ -465,12 +471,16 @@ function getSummary(chn, param) {
           if (chunk.recovered === "") { recoveries = 0; } else { recoveries = chunk.recovered; }
           if (chunk.activecases === "") { active = 0; } else { active = chunk.activecases; }
           if (chunk.criticalcases === "") { critical = 0; } else { critical = chunk.criticalcases; }
+          if (chunk.testsperformed === "") { tests = 'n/a'; } else { tests = chunk.testsperformed; }
+          if (chunk.testsperformedbypop === "") { testbypop = 'n/a'; } else { testbypop = chunk.testsperformedbypop; }
           chn.send("**__" + chunk.country + ":__**\n" +
-            "Total Cases:       " + cases + "\n" +
-            "Active Cases:     " + active + "\n" +
-            "Critical Cases:    " + critical + "\n" +
-            "Deaths:                " + deaths + "\n" +
-            "Recoveries:         " + recoveries);
+            "Total Cases:         " + cases + "\n" +
+            "Active Cases:       " + active + "\n" +
+            "Critical Cases:      " + critical + "\n" +
+            "Deaths:                  " + deaths + "\n" +
+            "Recoveries:           " + recoveries + "\n" +
+            "Total Tests:          " + tests + "\n" +
+            "Tests/1M Pop:     " + testbypop);
           return;
         }
       }
