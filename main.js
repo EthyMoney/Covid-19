@@ -208,7 +208,7 @@ async function commands(message) {
       // Help
     } else if (command === 'help' || command === '?') {
       console.log(chalk.cyan("help command deployed to " + chalk.yellow(message.author.username) + chalk.green(" in: ") + chalk.cyan(message.guild.name)));
-      channel.send("Hi there! This bot is rapidly changing with new features and fixes, so check back here often so you don't miss anything!\n\n" +
+      channel.send("Hi there! Here's how to interact with the Covid-19 bot:\n\n" +
         "**__Commands and usage:__**\n" +
         ":small_blue_diamond: To see a situation summary for worldwide, simply use  `.cv`\n" +
         ":small_blue_diamond: For a specific country, use  `.cv <country>`\n" +
@@ -645,8 +645,17 @@ function timeUntilDayReset() {
   let min = now.getMinutes();
   let hrsLeft = undefined;
   let minsLeft = 60 - min;
-  (18 - hr <= 0) ? (hrsLeft = 24 + (18 - hr)) : (hrsLeft = 18 - hr)
-  return responseString = `Todays counts will reset in ${hrsLeft}hrs, ${minsLeft}mins.`;
+  (19 - hr <= 0) ? (hrsLeft = 24 + (19 - hr)) : (hrsLeft = 18 - hr);
+  if (hrsLeft === 24) {
+    hrsLeft = 0;
+    if (minsLeft <= 45) {
+      return `Todays counts will reset very soon.`;
+    }
+    return `Todays counts will reset in approximately ${hrsLeft}hrs, ${minsLeft}mins.`;
+  }
+  else{
+    return `Todays counts will reset in approximately ${hrsLeft}hrs, ${minsLeft}mins.`;
+  }
 }
 
 
