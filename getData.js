@@ -60,16 +60,16 @@ function worldMetersCacher(){
     for (let i = 0; i < table.length; i++) {
       let cells = table[i].cells;
       let JSONbuilder2 = {
-        "country": cells[0].textContent.trim(), //remove occasional newline characters
-        "cases": cells[1].textContent,
-        "newcases": cells[2].textContent,
-        "deaths": cells[3].textContent.trim(), //deaths number has strange trailing whitespace, so it's trimmed here
-        "newdeaths": cells[4].textContent,
-        "recovered": cells[5].textContent,
-        "activecases": cells[6].textContent,
-        "criticalcases": cells[7].textContent,
-        "testsperformed": cells[10].textContent,
-        "testsperformedbypop": cells[11].textContent
+        "country": cells[1].textContent.trim(), //remove occasional newline characters
+        "cases": cells[2].textContent,
+        "newcases": cells[3].textContent,
+        "deaths": cells[4].textContent.trim(), //deaths number has strange trailing whitespace, so it's trimmed here
+        "newdeaths": cells[5].textContent,
+        "recovered": cells[6].textContent,
+        "activecases": cells[7].textContent,
+        "criticalcases": cells[8].textContent,
+        "testsperformed": cells[9].textContent,
+        "testsperformedbypop": cells[10].textContent
       }
       jsonArr.push(JSONbuilder2);
     }
