@@ -68,8 +68,8 @@ function worldMetersCacher(){
         "recovered": cells[6].textContent,
         "activecases": cells[7].textContent,
         "criticalcases": cells[8].textContent,
-        "testsperformed": cells[9].textContent,
-        "testsperformedbypop": cells[10].textContent
+        "testsperformed": cells[11].textContent,
+        "testsperformedbypop": cells[12].textContent
       }
       jsonArr.push(JSONbuilder2);
     }
