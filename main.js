@@ -35,6 +35,7 @@ const chalk = require('chalk');
 const schedule = require('node-schedule');
 const reloader = require('./getData');
 const shortcountrynames = require("shortcountrynames")
+const DBL = require("dblapi.js");
 
 // Define custom country codes to match input to the data cache key values
 shortcountrynames.names["UK"] = 'UK'
@@ -64,8 +65,12 @@ try {
 // Set the prefix
 const prefix = ['-c', '.cv', '-C', '.CV', '.Cv', '.cV'];
 
+// Sign in with DBL for bot stats
+const dbl = new DBL(keys['dbl'], client);
+
 // Scheduled updates of data
 let updateStatesStats = schedule.scheduleJob('*/30 * * * *', updateCache); // update data caches at every half hour
+let publishBotStats = schedule.scheduleJob('0 */12 * * *', publishStatsDBL); // post updated bot stats to the Discord Bots List
 
 
 
@@ -665,6 +670,14 @@ function numberWithCommas(x) {
   var parts = x.toString().split(".");
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return parts.join(".");
+}
+
+
+
+// Function to update bot session stats on Discord Bot List
+function publishStatsDBL(){
+  dbl.postStats(client.guilds.size);
+  console.log(chalk.blue("Published DBL stats : " + chalk.yellow(client.guilds.size)));
 }
 
 
