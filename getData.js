@@ -24,7 +24,9 @@ function usStatsCacher() {
         "newcases": cells[2].textContent.trim(),
         "deaths": cells[3].textContent.trim(),
         "newdeaths": cells[4].textContent.trim(),
-        "activecases": cells[5].textContent.trim()
+        "activecases": cells[5].textContent.trim(),
+        "testsperformed": cells[8].textContent.trim(),
+        "testsperformedbypop": cells[9].textContent.trim()
       }
       jsonArr.push(JSONbuilder);
     }
