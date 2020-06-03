@@ -547,6 +547,8 @@ function getUsCases(chn, state) {
         var cases = chunk.cases + yote;
         var active = chunk.activecases;
         var deaths = chunk.deaths + yote2;
+        var tests = chunk.testsperformed;
+        var testbypop = chunk.testsperformedbypop;
         var recovered = (Number(chunk.cases.replace(/,/g, '')) - (Number(chunk.deaths.replace(/,/g, '')) + Number(chunk.activecases.replace(/,/g, ''))));
         foundState = true;
       }
@@ -554,10 +556,12 @@ function getUsCases(chn, state) {
     if (foundState) {
       if (recovered == "0") { recovered = "0 (or not reported)" }
       chn.send("__**" + state + ":**__ " +
-        "\nCases:                " + cases +
-        "\nActive Cases:   " + active +
-        "\nDeaths:              " + deaths +
-        "\nRecoveries:       " + numberWithCommas(recovered));
+        "\nCases:                    " + cases +
+        "\nActive Cases:       " + active +
+        "\nDeaths:                  " + deaths +
+        "\nRecoveries:           " + numberWithCommas(recovered) +
+        "\nTotal Tests:          " + tests +
+        "\nTests/1M Pop:     " + testbypop);
     }
     else {
       chn.send("That state wasn't found. Make sure you enter a valid US state using either the 2-letter abbreviation or the full name and try again.\n(Example:  `.cv s mn`  for data from Minnesota)\n" +
