@@ -66,10 +66,10 @@ function worldMetersCacher(){
         "deaths": cells[4].textContent.trim(), //deaths number has strange trailing whitespace, so it's trimmed here
         "newdeaths": cells[5].textContent,
         "recovered": cells[6].textContent,
-        "activecases": cells[7].textContent,
-        "criticalcases": cells[8].textContent,
-        "testsperformed": cells[11].textContent,
-        "testsperformedbypop": cells[12].textContent
+        "activecases": cells[8].textContent,
+        "criticalcases": cells[9].textContent,
+        "testsperformed": cells[12].textContent,
+        "testsperformedbypop": cells[13].textContent
       }
       jsonArr.push(JSONbuilder2);
     }
