@@ -19,17 +19,14 @@ function usStatsCacher() {
     for (let i = 0; i < table.length; i++) {
       let cells = table[i].cells;
       let JSONbuilder = {
-        "state": cells[1].textContent.trim(),
-        "cases": cells[2].textContent.trim(),
-        "newcases": cells[3].textContent.trim(),
-        "deaths": cells[4].textContent.trim(),
-        "newdeaths": cells[5].textContent.trim(),
-        "recoveries": cells[6].textContent.trim(),
-        "activecases": cells[7].textContent.trim(),
-        "casesbypop": cells[8].textContent.trim(),
-        "deathsbypop": cells[9].textContent.trim(),
-        "testsperformed": cells[10].textContent.trim(),
-        "testsperformedbypop": cells[11].textContent.trim()
+        "state": cells[0].textContent.trim(),
+        "cases": cells[1].textContent.trim(),
+        "newcases": cells[2].textContent.trim(),
+        "deaths": cells[3].textContent.trim(),
+        "newdeaths": cells[4].textContent.trim(),
+        "activecases": cells[5].textContent.trim(),
+        "testsperformed": cells[8].textContent.trim(),
+        "testsperformedbypop": cells[9].textContent.trim()
       }
       jsonArr.push(JSONbuilder);
     }
