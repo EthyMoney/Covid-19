@@ -1,5 +1,5 @@
-# Covid-19 [![Discord Bots](https://top.gg/api/widget/status/691863138559328327.svg)](https://top.gg/bot/691863138559328327) [![Discord Bots](https://top.gg/api/widget/servers/691863138559328327.svg)](https://top.gg/bot/691863138559328327) [![Discord Bots](https://top.gg/api/widget/lib/691863138559328327.svg)](https://top.gg/bot/691863138559328327)
-Description: Covid-19 is a simple discord bot with functionality related to live statistics and news reporting for the Novel Coronavirus pandemic of 2020 (Officially named Covid-19).
+# Covid-19 [![Discord Bots](https://top.gg/api/widget/status/691863138559328327.svg)](https://top.gg/bot/691863138559328327) [![Discord Bots](https://top.gg/api/widget/servers/691863138559328327.svg)](https://top.gg/bot/691863138559328327)
+Description: Covid-19 is a simple discord bot with functionality related to live statistics and reporting from around the world for the Novel Coronavirus pandemic of 2020 (Officially named Covid-19).
 
 [Click here to add the bot to your discord server!](https://discordapp.com/oauth2/authorize?client_id=691863138559328327&scope=bot&permissions=67488832)
 <br><br>
