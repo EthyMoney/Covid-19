@@ -16,5 +16,8 @@
 		"request-promise": "^4.2.6",
 		"shortcountrynames": "^0.9.0",
 		"sqlite": "^4.0.14"
+	},
+	"devDependencies": {
+		"eslint": "^8.16.0"
 	}
 }
