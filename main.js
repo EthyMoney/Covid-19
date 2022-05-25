@@ -37,7 +37,7 @@ const chalk = require('chalk');
 const schedule = require('node-schedule');
 const reloader = require('./getData');
 const shortcountrynames = require('shortcountrynames');
-const DBL = require('dblapi.js');
+const { AutoPoster } = require('topgg-autoposter');
 
 // Define custom country codes to match input to the data cache key values
 shortcountrynames.names.UK = 'UK';
@@ -68,12 +68,11 @@ try {
 // Set the prefix
 const prefix = ['-c', '.cv', '-C', '.CV', '.Cv', '.cV'];
 
-// Sign in with DBL for bot stats
-const dbl = new DBL(keys.dbl, client);
+// Used for the Top.gg auto-poster client, will get initialized on bot ready event
+let poster; 
 
 // Scheduled updates of data
 schedule.scheduleJob('*/30 * * * *', updateCache); // update data caches at every half hour
-schedule.scheduleJob('0 */12 * * *', publishStatsDBL); // post updated bot stats to the Discord Bots List
 
 
 
@@ -91,6 +90,8 @@ client.on('ready', () => {
   updateCache(); //refresh cache on startup right away
   // Display help command on bot's status
   client.user.setActivity('.cv help', { type: 'WATCHING' });
+  // Enable publishing bot stats to top.gg (formally known as discordbots.org)
+  activateDBLStatsPublishing();
 });
 
 // Logs additions of new servers
@@ -671,10 +672,13 @@ function numberWithCommas(x) {
 
 
 
-// Function to update bot session stats on Discord Bot List
-function publishStatsDBL() {
-  dbl.postStats(client.guilds.size);
-  console.log(chalk.blue('Published DBL stats : ' + chalk.yellow(client.guilds.size)));
+// Function to update bot session stats on Discord Bot List every 30 minutes automatically
+function activateDBLStatsPublishing() {
+  poster = AutoPoster(keys.dbl, client);
+  poster.on('error', (err) => {
+    // Catch issues with Top.gg updater
+    console.log(chalk.yellow('Top.gg poster failed to update due to the following error:  ' + chalk.cyan(err)));
+  });
 }
 
 
