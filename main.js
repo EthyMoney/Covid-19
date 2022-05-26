@@ -7,9 +7,9 @@
 //  \_____|  \___/    \_/   |_|  \__,_|               |_|   /_/         |____/   \___/   \__|
 //
 //
-// Ver: 1.1.0
+// Ver: 1.2.0
 // Started: 3/23/2020
-// Last version published: 4/1/2020
+// Last version published: 5/26/2022
 // Written by: Logan (EthyMoney)
 // License: MIT
 // Description: A simple discord bot with functionality related to statistics and news reporting for the Novel Coronavirus pandemic of 2020 (Officially named Covid-19)
@@ -626,10 +626,10 @@ function postSessionStats(channel) {
 
 
 // Scheduled utility function to refresh cache with new data
-function updateCache() {
+async function updateCache() {
   //Refresh the cache
-  reloader.update();
-  reloader.worldCache();
+  await reloader.update();
+  await reloader.worldCache();
   setTimeout(function () {
     // Read and parse the refreshed cache
     statesJSON = JSON.parse(fs.readFileSync('USstats.json', 'utf8'));
