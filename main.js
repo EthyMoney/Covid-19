@@ -126,7 +126,7 @@ async function commands(message) {
 
   // Check for bot mention and reply with response ping latency
   const collection = message.mentions.members;
-  if (collection.has('691863138559328327')) {
+  if (collection.has('691863138559328327') && !message.reference) {
     let ping = (Number(new Date().getTime()) - message.createdTimestamp);
     if (Math.sign(ping) === -1) { ping = ping * -1; }
     channel.send(`Hi! <@!${message.author}> (\`${ping}\` ms) If you need help, try \`.cv help\``);
