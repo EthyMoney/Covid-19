@@ -28,8 +28,8 @@
 // -------------------------------------------
 // -------------------------------------------
 
-const Discord = require('discord.js');
-const client = new Discord.Client();
+const { Client, Intents } = require('discord.js');
+const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES], shards: 'auto' });
 const fs = require('fs');
 const console = require('node:console');
 const setTimeout = require('node:timers').setTimeout;
@@ -99,11 +99,9 @@ client.on('guildCreate', guild => {
   console.log(chalk.green('NEW SERVER: ' + chalk.cyan(guild.name)));
 });
 
-client.on('message', message => {
+client.on('messageCreate', message => {
   // Check for Ghost users
   if (message.author === null) return;
-  // Check for, and ignore DM channels (this is a safety precaution)
-  if (message.channel.type !== 'text') return;
   // Check for, and ignore any bots (another safety precaution)
   if (message.author.bot || message.author == client.user) return;
   // Forward message to the commands processor
