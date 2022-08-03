@@ -16,7 +16,6 @@ Description: Covid-19 is a simple discord bot with functionality related to live
 * `.cv c us`  => display only cases for United States.
 * `.cv d it`  => display only deaths for italy.
 * `.cv s mn`  => display summary for the state of Minnesota.
-* `.cv d it`  => display only deaths for italy.
 * `.cv r`        => display only recoveries for worldwide.
 ## Notes and extras:
 * You can use either the 2-letter abbreviation, or the full name for countries and states.
