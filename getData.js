@@ -1,7 +1,6 @@
-const fs = require('fs');
-const console = require('node:console');
-const chalk = require('chalk');
-const jsdom = require('jsdom');
+import fs from 'fs';
+import chalk from 'chalk';
+import jsdom from 'jsdom';
 const { JSDOM } = jsdom;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -10,7 +9,7 @@ const { JSDOM } = jsdom;
 
 
 // Collects data for U.S. states
-async function usStatsCacher() {
+export async function usStatsCacher() {
   const res = await fetch('https://www.worldometers.info/coronavirus/country/us/');
   if (res.ok) {
     const data = await res.text();
@@ -46,7 +45,7 @@ async function usStatsCacher() {
 }
 
 // Collects data for countries worldwide and overall global data
-async function worldMetersCacher() {
+export async function worldMetersCacher() {
   const res = await fetch('https://www.worldometers.info/coronavirus/');
   if (res.ok) {
     const data = await res.text();
@@ -90,6 +89,3 @@ async function worldMetersCacher() {
     console.log(chalk.red('World cache retrieval error: ') + res.status);
   }
 }
-
-exports.worldCache = worldMetersCacher;
-exports.update = usStatsCacher;

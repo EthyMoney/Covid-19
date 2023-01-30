@@ -28,16 +28,14 @@
 // -------------------------------------------
 // -------------------------------------------
 
-const { Client, Intents } = require('discord.js');
+import { Client, Intents } from 'discord.js';
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES], shards: 'auto' });
-const fs = require('fs');
-const console = require('node:console');
-const setTimeout = require('node:timers').setTimeout;
-const chalk = require('chalk');
-const schedule = require('node-schedule');
-const reloader = require('./getData');
-const shortcountrynames = require('shortcountrynames');
-const { AutoPoster } = require('topgg-autoposter');
+import fs from 'fs';
+import chalk from 'chalk';
+import schedule from 'node-schedule';
+import { usStatsCacher, worldMetersCacher } from './getData.js';
+import * as shortcountrynames from 'shortcountrynames';
+import { AutoPoster } from 'topgg-autoposter';
 
 // Define custom country codes to match input to the data cache key values
 shortcountrynames.names.UK = 'UK';
@@ -69,7 +67,7 @@ try {
 const prefix = ['-c', '.cv', '-C', '.CV', '.Cv', '.cV'];
 
 // Used for the Top.gg auto-poster client, will get initialized on bot ready event
-let poster; 
+let poster;
 
 // Scheduled updates of data
 schedule.scheduleJob('*/30 * * * *', updateCache); // update data caches at every half hour
@@ -227,11 +225,11 @@ async function commands(message) {
         '`.cv north america`  => display summary for North America\n\n' +
         '**__Notes and extras:__**\n' +
         '• You can use either the 2-letter abbreviation, or the full name for countries and states.\n' +
-        '• For continents you must use the FULL name when specifiying them. Examples: North America, Africa...\n' +
+        '• For continents you must use the FULL name when specifying them. Examples: North America, Africa...\n' +
         '• Summary reports have counters for new daily data which resets at the end of the day. You can see when the next reset will occur using `.cv time`.\n' +
         '• You can use either `.cv` OR `-c` as the prefix for commands, so take your pick!\n' +
         '• This bot is open source and frequently updated! You can get the github link using `.cv source`.\n' +
-        '• Spare some change to support Covid-19 releif efforts? Use `.cv donate` to get a link to official W.H.O. Solidarity Response Fund.\n' +
+        '• Spare some change to support Covid-19 relief efforts? Use `.cv donate` to get a link to official W.H.O. Solidarity Response Fund.\n' +
         '• Need a reminder of these commands? You can show this help message again any time by using `.cv help`.\n' +
         '• One more thing... Please share this bot if you like it! You can get the invite link to add the bot to your other servers using `.cv invite`.\n'
       );
@@ -266,6 +264,8 @@ async function commands(message) {
     // Default to the summary command if none is provided
     else {
       getSummary(channel, combinedParamsDefault);
+      combinedParamsDefault == '' ? combinedParamsDefault = 'ALL' : combinedParamsDefault;
+      console.log(chalk.blue('Summary') + chalk.green(' command called by ') + chalk.yellow(message.author.username) + chalk.green(' in: ') + chalk.cyan(message.guild.name) + chalk.green(' with params: ') + chalk.cyan(combinedParamsDefault));
     }
   }
 }
@@ -441,11 +441,11 @@ function getSummary(channel, param) {
             channel.send('**__' + chunk.country + ':__**\n' +
               'Total Cases:         ' + cases + '\n' +
               'Active Cases:       ' + active + '\n' +
-              'Critical Cases:      ' + critical + '\n' +
+              'Critical Cases:     ' + critical + '\n' +
               'Deaths:                  ' + deaths + '\n' +
               'Recoveries:           ' + recoveries + '\n' +
-              'Total Tests:          ' + tests + '\n' +
-              'Tests/1M Pop:     ' + testbypop);
+              'Total Tests:           ' + tests + '\n' +
+              'Tests/1M Pop:      ' + testbypop);
             return;
           }
         }
@@ -473,11 +473,11 @@ function getSummary(channel, param) {
           channel.send('**__' + chunk.country + ':__**\n' +
             'Total Cases:         ' + cases + '\n' +
             'Active Cases:       ' + active + '\n' +
-            'Critical Cases:      ' + critical + '\n' +
+            'Critical Cases:     ' + critical + '\n' +
             'Deaths:                  ' + deaths + '\n' +
             'Recoveries:           ' + recoveries + '\n' +
-            'Total Tests:          ' + tests + '\n' +
-            'Tests/1M Pop:     ' + testbypop);
+            'Total Tests:           ' + tests + '\n' +
+            'Tests/1M Pop:      ' + testbypop);
           return;
         }
       }
@@ -503,7 +503,7 @@ function getSummary(channel, param) {
         channel.send('**__Worldwide:__**\n' +
           'Total Cases:       ' + cases + '\n' +
           'Active Cases:     ' + active + '\n' +
-          'Critical Cases:    ' + critical + '\n' +
+          'Critical Cases:   ' + critical + '\n' +
           'Deaths:                ' + deaths + '\n' +
           'Recoveries:         ' + recoveries);
         return;
@@ -550,8 +550,8 @@ function getUsCases(channel, state) {
         '\nActive Cases:          ' + active +
         '\nDeaths:                     ' + deaths +
         '\nRecoveries:              ' + numberWithCommas(recovered) +
-        '\nTotal Tests:             ' + tests +
-        '\nTests/1M Pop:        ' + testbypop +
+        '\nTotal Tests:              ' + tests +
+        '\nTests/1M Pop:         ' + testbypop +
         '\nCases/1M Pop:       ' + casebypop +
         '\nDeaths/1M Pop:     ' + deathbypop);
     }
@@ -608,7 +608,7 @@ function postSessionStats(channel) {
 // }
 // function getUSStateCasesDeathsRecoveries(channel) {
 // }
-// function getDetailedStats(channel) { //This one is a long shot, but if possible add some things like age group and city stats as well as severeity of cases
+// function getDetailedStats(channel) { //This one is a long shot, but if possible add some things like age group and city stats as well as severity of cases
 // }
 // function getActiveCases(channel) { //Cases actually active for infection (total - the recovered/dead)
 // }
@@ -628,8 +628,8 @@ function postSessionStats(channel) {
 // Scheduled utility function to refresh cache with new data
 async function updateCache() {
   //Refresh the cache
-  await reloader.update();
-  await reloader.worldCache();
+  await usStatsCacher();
+  await worldMetersCacher();
   setTimeout(function () {
     // Read and parse the refreshed cache
     statesJSON = JSON.parse(fs.readFileSync('USstats.json', 'utf8'));
@@ -672,6 +672,10 @@ function numberWithCommas(x) {
 
 // Function to update bot session stats on Discord Bot List every 30 minutes automatically
 function activateDBLStatsPublishing() {
+  if (!keys.db || keys.dbl == '') {
+    console.log(chalk.yellow('No Top.gg API key found. Top.gg stats will not be published.'));
+    return;
+  }
   poster = AutoPoster(keys.dbl, client);
   poster.on('error', (err) => {
     // Catch issues with Top.gg updater
