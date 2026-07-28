@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-07-28T16:38:41.333Z",
+  "source": "https://www.worldometers.info/coronavirus/",
+  "note": "Point-in-time snapshot captured before archiving the project. Worldometers trimmed the US state table over time; new cases, new deaths, active cases and testing columns are no longer published per state and are absent from this data.",
+  "world": {
+    "file": "sample-data/WorldStats.json",
+    "totals": {
+      "totalCases": "704,753,890",
+      "totalDeaths": "7,010,681",
+      "totalRecovered": "675,619,811",
+      "totalActiveCases": "22,123,398"
+    },
+    "entries": 238
+  },
+  "unitedStates": {
+    "file": "sample-data/USstats.json",
+    "entries": 52
+  }
+}

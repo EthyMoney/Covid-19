@@ -1,9 +1,12 @@
-
-keys.json
 node_modules
-cdc_html.txt
-USstats.json
-WorldStats.json
-testing.js
 keys.json
 .vscode/settings.json
+
+# Live data caches, rewritten at runtime.
+# These need the leading slash: an unanchored pattern matches at any depth and would also swallow
+# sample-data/USstats.json and sample-data/WorldStats.json, which are meant to be committed.
+/USstats.json
+/WorldStats.json
+
+cdc_html.txt
+testing.js

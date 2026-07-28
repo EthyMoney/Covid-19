@@ -1,19 +1,19 @@
 //
-//   _____                   _       _                __    ___          ____            _   
-//  / ____|                 (_)     | |              /_ |  / _ \        |  _ \          | |  
-// | |        ___   __   __  _    __| |    ______     | | | (_) |       | |_) |   ___   | |_ 
+//   _____                   _       _                __    ___          ____            _
+//  / ____|                 (_)     | |              /_ |  / _ \        |  _ \          | |
+// | |        ___   __   __  _    __| |    ______     | | | (_) |       | |_) |   ___   | |_
 // | |       / _ \  \ \ / / | |  / _` |   |______|    | |  \__, |       |  _ <   / _ \  | __|
-// | |____  | (_) |  \ V /  | | | (_| |               | |    / /        | |_) | | (_) | | |_ 
+// | |____  | (_) |  \ V /  | | | (_| |               | |    / /        | |_) | | (_) | | |_
 //  \_____|  \___/    \_/   |_|  \__,_|               |_|   /_/         |____/   \___/   \__|
 //
 //
-// Ver: 1.2.0
+// Ver: 2.0.0
 // Started: 3/23/2020
-// Last version published: 5/26/2022
+// Last version published: 7/28/2026 (final maintenance release before archival)
 // Written by: Logan (EthyMoney)
 // License: MIT
 // Description: A simple discord bot with functionality related to statistics and news reporting for the Novel Coronavirus pandemic of 2020 (Officially named Covid-19)
-// 
+//
 // It's soup time!
 //
 
@@ -28,46 +28,72 @@
 // -------------------------------------------
 // -------------------------------------------
 
-import { Client, Intents } from 'discord.js';
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES], shards: 'auto' });
-import fs from 'fs';
+import {
+  Client,
+  Events,
+  GatewayIntentBits,
+  EmbedBuilder,
+  ActivityType,
+  MessageFlags
+} from 'discord.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import chalk from 'chalk';
 import schedule from 'node-schedule';
-import { usStatsCacher, worldMetersCacher } from './getData.js';
-import * as shortcountrynames from 'shortcountrynames';
-import { AutoPoster } from 'topgg-autoposter';
+import { usStatsCacher, worldMetersCacher, loadStats } from './getData.js';
+import { commandList } from './commands.js';
+import {
+  clean,
+  present,
+  withDaily,
+  isWorldwide,
+  isNorthKorea,
+  resolveCountry,
+  resolveState,
+  rankSuggestions,
+  timeUntilDayReset
+} from './stats.js';
 
-// Define custom country codes to match input to the data cache key values
-shortcountrynames.names.UK = 'UK';
-shortcountrynames.names.EU = 'Europe';
+const ROOT = path.dirname(fileURLToPath(import.meta.url));
+
+// This bot only uses slash commands, so it needs no privileged intents at all. That is a meaningful
+// upgrade from the original prefix-command version, which required the Message Content intent.
+const client = new Client({ intents: [GatewayIntentBits.Guilds], shards: 'auto' });
 
 // Secret keys and tokens
-const keys = JSON.parse(fs.readFileSync('keys.json', 'utf8'));
-
-// Stats caches
-let statesJSON, worldCacheJSON;
+let keys;
 try {
-  statesJSON = JSON.parse(fs.readFileSync('USstats.json', 'utf8'));
-} catch (err) {
-  fs.appendFile('USstats.json', '{}', function (err) {
-    if (err) throw err;
-    console.log(chalk.green('Created new USstats.json file automatically.'));
-  });
+  keys = JSON.parse(fs.readFileSync(path.join(ROOT, 'keys.json'), 'utf8'));
+} catch {
+  console.log(chalk.red('Unable to read keys.json. Copy keys.example.json to keys.json and add your bot token.'));
+  process.exit(1);
 }
-try {
-  worldCacheJSON = JSON.parse(fs.readFileSync('WorldStats.json', 'utf8'));
-} catch (err) {
-  fs.appendFile('WorldStats.json', '{}', function (err) {
-    if (err) throw err;
-    console.log(chalk.green('Created new WorldStats.json file automatically.'));
-  });
+if (!keys.token || keys.token.startsWith('YOUR_')) {
+  console.log(chalk.red('No bot token found in keys.json. Add your Discord bot token and try again.'));
+  process.exit(1);
 }
 
-// Set the prefix
-const prefix = ['-c', '.cv', '-C', '.CV', '.Cv', '.cV'];
+// Stats caches, plus where each one came from so replies can be honest about the data's age
+let worldCacheJSON = null;
+let usCacheJSON = null;
+let worldSource = 'none';
+let usSource = 'none';
 
-// Used for the Top.gg auto-poster client, will get initialized on bot ready event
-let poster;
+// Details of the bundled snapshot, used to label archived data in embed footers
+let snapshotDate = null;
+try {
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'sample-data', 'manifest.json'), 'utf8'));
+  snapshotDate = manifest.capturedAt ? manifest.capturedAt.slice(0, 10) : null;
+} catch {
+  // No snapshot bundled, which is fine as long as live collection works.
+}
+
+const BRAND_COLOR = 0x03fcd7;
+const THUMBNAIL = 'https://i.imgur.com/GblpWSq.png';
+const FOOTER_ICON = 'https://i.imgur.com/jnvYxdh.jpg';
+const DONATE_URL = 'https://www.who.int/emergencies/diseases/novel-coronavirus-2019/donate';
+const REPO_URL = 'https://github.com/EthyMoney/Covid-19';
 
 // Scheduled updates of data
 schedule.scheduleJob('*/30 * * * *', updateCache); // update data caches at every half hour
@@ -83,28 +109,61 @@ schedule.scheduleJob('*/30 * * * *', updateCache); // update data caches at ever
 // -------------------------------------------
 // -------------------------------------------
 
-client.on('ready', () => {
+client.once(Events.ClientReady, async () => {
   console.log(chalk.greenBright(`Logged in as ${client.user.tag}!`));
-  updateCache(); //refresh cache on startup right away
+
+  // Load whatever we already have on disk so the bot can answer immediately, then refresh.
+  await loadInitialCaches();
+  updateCache();
+
+  await registerCommands();
+
   // Display help command on bot's status
-  client.user.setActivity('.cv help', { type: 'WATCHING' });
+  client.user.setActivity('/covid help', { type: ActivityType.Watching });
+
   // Enable publishing bot stats to top.gg (formally known as discordbots.org)
   activateDBLStatsPublishing();
 });
 
 // Logs additions of new servers
-client.on('guildCreate', guild => {
+client.on(Events.GuildCreate, guild => {
   console.log(chalk.green('NEW SERVER: ' + chalk.cyan(guild.name)));
 });
 
-client.on('messageCreate', message => {
-  // Check for Ghost users
-  if (message.author === null) return;
-  // Check for, and ignore any bots (another safety precaution)
-  if (message.author.bot || message.author == client.user) return;
-  // Forward message to the commands processor
-  commands(message, false);
+client.on(Events.InteractionCreate, async interaction => {
+  try {
+    if (interaction.isAutocomplete()) {
+      await handleAutocomplete(interaction);
+    } else if (interaction.isChatInputCommand()) {
+      await handleCommand(interaction);
+    }
+  } catch (err) {
+    console.log(chalk.red('Interaction handling error: ') + chalk.cyan(err.message));
+    // Best effort apology. If the interaction already timed out there is nothing left to do.
+    try {
+      const payload = { content: 'Something went wrong handling that command.', flags: MessageFlags.Ephemeral };
+      if (interaction.replied || interaction.deferred) await interaction.followUp(payload);
+      else await interaction.reply(payload);
+    } catch { /* interaction is gone, nothing to recover */ }
+  }
 });
+
+// Register the command set. A guildId in keys.json registers instantly for that one server, which is
+// handy while testing; without it commands register globally and can take up to an hour to appear.
+async function registerCommands() {
+  const body = commandList.map(command => command.toJSON());
+  try {
+    if (keys.guildId) {
+      await client.application.commands.set(body, keys.guildId);
+      console.log(chalk.green('Registered slash commands to guild ' + chalk.cyan(keys.guildId)));
+    } else {
+      await client.application.commands.set(body);
+      console.log(chalk.green('Registered slash commands globally.'));
+    }
+  } catch (err) {
+    console.log(chalk.red('Failed to register slash commands: ') + chalk.cyan(err.message));
+  }
+}
 
 
 
@@ -117,157 +176,65 @@ client.on('messageCreate', message => {
 // -------------------------------------------
 // -------------------------------------------
 
-async function commands(message) {
+async function handleCommand(interaction) {
+  const sub = interaction.options.getSubcommand();
+  const who = interaction.user.username;
+  const where = interaction.guild ? interaction.guild.name : 'DM';
 
-  // Get the channel where the bot will answer.
-  const channel = message.channel;
+  switch (sub) {
+    case 'summary': {
+      const param = interaction.options.getString('location') || '';
+      console.log(chalk.blue('summary') + chalk.green(' called by ') + chalk.yellow(who) + chalk.green(' in: ') + chalk.cyan(where) + chalk.green(' on: ') + chalk.cyan(param || 'ALL'));
+      return getSummary(interaction, param);
+    }
+    case 'cases':
+    case 'deaths':
+    case 'recoveries': {
+      const param = interaction.options.getString('location') || '';
+      console.log(chalk.blue(sub) + chalk.green(' called by ') + chalk.yellow(who) + chalk.green(' in: ') + chalk.cyan(where) + chalk.green(' on: ') + chalk.cyan(param || 'ALL'));
+      return getSingleStat(interaction, sub, param);
+    }
+    case 'state': {
+      const param = interaction.options.getString('state');
+      console.log(chalk.blue('state') + chalk.green(' called by ') + chalk.yellow(who) + chalk.green(' in: ') + chalk.cyan(where) + chalk.green(' on: ') + chalk.cyan(param));
+      return getUsCases(interaction, param);
+    }
+    case 'time':
+      return interaction.reply(timeUntilDayReset());
+    case 'help':
+      console.log(chalk.cyan('help command deployed to ' + chalk.yellow(who) + chalk.green(' in: ') + chalk.cyan(where)));
+      return postHelp(interaction);
+    case 'info':
+      console.log(chalk.cyan('Session stats deployed to ' + chalk.yellow(who) + chalk.green(' in: ') + chalk.cyan(where)));
+      return postSessionStats(interaction);
+    case 'invite':
+      console.log(chalk.cyan('Invite link deployed to ' + chalk.yellow(who) + chalk.green(' in: ') + chalk.cyan(where)));
+      return interaction.reply('I\'m thrilled you want me to join you! I\'ll make it super easy to invite me to your server using this link: \n' + inviteUrl());
+    case 'source':
+      console.log(chalk.cyan('Github repo deployed to ' + chalk.yellow(who) + chalk.green(' in: ') + chalk.cyan(where)));
+      return interaction.reply(REPO_URL);
+    case 'donate':
+      console.log(chalk.cyan('Donation link deployed to ' + chalk.yellow(who) + chalk.green(' in: ') + chalk.cyan(where)));
+      return interaction.reply('During this time of critical need, any financial support will go a very long way to help save lives. Here\'s a link to donate to the official COVID-19 Solidarity Response Fund: \n' + DONATE_URL);
+    default:
+      return interaction.reply({ content: 'Unknown command.', flags: MessageFlags.Ephemeral });
+  }
+}
 
-  // Check for bot mention and reply with response ping latency
-  const collection = message.mentions.members;
-  if (collection.has('691863138559328327') && !message.reference) {
-    let ping = (Number(new Date().getTime()) - message.createdTimestamp);
-    if (Math.sign(ping) === -1) { ping = ping * -1; }
-    channel.send(`Hi! <@!${message.author}> (\`${ping}\` ms) If you need help, try \`.cv help\``);
+// Suggests country/continent or state names straight out of the live cache, so the suggestions always
+// match the exact spellings the data uses. This is what makes the old "that input was not recognized"
+// dead end mostly disappear.
+async function handleAutocomplete(interaction) {
+  const focused = interaction.options.getFocused(true);
+  let pool = [];
+  if (focused.name === 'location' && worldCacheJSON) {
+    pool = worldCacheJSON.slice(1).map(entry => entry.country).filter(Boolean);
+  } else if (focused.name === 'state' && usCacheJSON) {
+    pool = usCacheJSON.map(entry => entry.state).filter(Boolean);
   }
 
-  // Split the message by spaces.
-  const code_in = message.content.split(' ').filter(function (v) { return v !== ''; });
-  if (code_in.length < 1) return;
-
-  // Check for prefix start.
-  let hasPfx = '';
-  prefix.map(pfx => hasPfx = (code_in[0].indexOf(pfx) === 0 ? pfx : hasPfx));
-
-  // Cut the prefix.
-  const code_in_pre = code_in[0];
-  code_in[0] = code_in[0].replace(hasPfx, '');
-
-  if (prefix.indexOf(code_in_pre) > -1) {
-
-    // Remove the prefix stub
-    code_in.splice(0, 1);
-
-    // Check for command
-    const command = (code_in[0]) ? code_in[0].toLowerCase() : null;
-
-    //
-    // Check and process commands
-    //
-
-    let param0, param1, param2, param3, param4;
-    if (code_in[0]) { param0 = code_in[0]; } else { param0 = ''; }
-    if (code_in[1]) { param1 = code_in[1]; } else { param1 = ''; }
-    if (code_in[2]) { param2 = code_in[2]; } else { param2 = ''; }
-    if (code_in[3]) { param3 = code_in[3]; } else { param3 = ''; }
-    if (code_in[4]) { param4 = code_in[4]; } else { param4 = ''; }
-    let combinedParams = (param1 + ' ' + param2 + ' ' + param3 + ' ' + param4).trim();
-    let combinedParamsDefault = (param0 + ' ' + param1 + ' ' + param2 + ' ' + param3 + ' ' + param4).trim();
-
-    // Special handling for korea and other inputs to check for user friendly input terms
-    if (combinedParams.toLowerCase() === 'korea' || combinedParams.toLowerCase() === 'south korea' || combinedParams.toLowerCase() === 'kor' ||
-      combinedParams.toLowerCase() === 'skorea' || combinedParams.toLowerCase() === 's korea' || combinedParams.toLowerCase() === 'kr') { combinedParams = 'S. Korea'; }
-    if (combinedParams.toLowerCase() === 'n korea' || combinedParams.toLowerCase() === 'north korea' ||
-      combinedParams.toLowerCase() === 'nkorea' || combinedParams.toLowerCase() === 'nk') { channel.send('North Korea stats are not available.'); return; }
-    if (combinedParams.toLowerCase() === 'czech' || combinedParams.toLowerCase() === 'czech republic') { channel.send('Use `Czechia` or `cz` for the czech republic. (As listed by the U.N.)'); }
-
-    // Special handling for korea and other inputs to check for user friendly input terms (duplicate check to account for default command input)
-    if (combinedParamsDefault.toLowerCase() === 'korea' || combinedParamsDefault.toLowerCase() === 'south korea' || combinedParamsDefault.toLowerCase() === 'kor' ||
-      combinedParamsDefault.toLowerCase() === 'skorea' || combinedParamsDefault.toLowerCase() === 's korea' || combinedParamsDefault.toLowerCase() === 'kr') { combinedParamsDefault = 'S. Korea'; }
-    if (combinedParamsDefault.toLowerCase() === 'n korea' || combinedParamsDefault.toLowerCase() === 'north korea' ||
-      combinedParamsDefault.toLowerCase() === 'nkorea' || combinedParamsDefault.toLowerCase() === 'nk') { channel.send('North Korea stats are not available.'); return; }
-    if (combinedParamsDefault.toLowerCase() === 'czech' || combinedParamsDefault.toLowerCase() === 'czech republic') { channel.send('Use `Czechia` or `cz` for the czech republic. (As listed by the U.N.)'); }
-
-    // Get cases
-    if (command === 'cases' || command === 'case' || command === 'c' || command === 'confirmed') {
-      //getUsCases(channel, code_in[1]);
-      console.log(chalk.green(chalk.blue('cases') + ' command called by ' + chalk.yellow(message.author.username) + ' in: ' + chalk.cyan(message.guild.name)));
-      getCases(channel, combinedParams);
-
-      // Get deaths
-    } else if (command === 'deaths' || command === 'death' || command === 'd' || command === 'dead' || command === 'died') {
-      console.log(chalk.green(chalk.blue('deaths') + ' command called by ' + chalk.yellow(message.author.username) + ' in: ' + chalk.cyan(message.guild.name)));
-      getDeaths(channel, combinedParams);
-
-      // Get recoveries
-    } else if (command === 'recoveries' || command === 'recovered' || command === 'r' || command === 'recover' || command === 'recovery') {
-      console.log(chalk.green(chalk.blue('recoveries') + ' command called by ' + chalk.yellow(message.author.username) + ' in: ' + chalk.cyan(message.guild.name)));
-      getRecoveries(channel, combinedParams);
-
-      // Get summary for a country
-    } else if (command === 'su' || command === 'summary' || command === 'overview' || command === 'stats' || command === 'sum') {
-      console.log(chalk.green(chalk.blue('Summary') + ' command called by ' + chalk.yellow(message.author.username) + ' in: ' + chalk.cyan(message.guild.name) + ' on: ' + chalk.cyan(combinedParams)));
-      getSummary(channel, combinedParams);
-
-      // Get info for US states
-    } else if (command === 'state' || command === 'states' || command === 's' || command === 'st') {
-      console.log(chalk.green(chalk.blue('State') + ' command called by ' + chalk.yellow(message.author.username) + ' in: ' + chalk.cyan(message.guild.name) + ' on: ' + chalk.cyan(combinedParams)));
-      getUsCases(channel, combinedParams);
-
-      // Help
-    } else if (command === 'help' || command === '?') {
-      console.log(chalk.cyan('help command deployed to ' + chalk.yellow(message.author.username) + chalk.green(' in: ') + chalk.cyan(message.guild.name)));
-      channel.send('Hi there! Here\'s how to interact with the Covid-19 bot:\n\n' +
-        '**__Commands and usage:__**\n' +
-        ':small_blue_diamond: To see a situation summary for worldwide, simply use  `.cv`\n' +
-        ':small_blue_diamond: For a specific country, use  `.cv <country>`\n' +
-        ':small_blue_diamond: For a whole continent, use  `.cv <continent>`\n' +
-        ':small_blue_diamond: For a US state, use  `.cv s <state>`\n' +
-        ':small_blue_diamond: For countries and continents, you can also view cases/deaths/recoveries individually using  `.cv <c/d/r> <country>`\n\n' +
-        '**__Examples:__**\n' +
-        '`.cv`            => display summary for worldwide\n' +
-        '`.cv de`      => display summary for Germany\n' +
-        '`.cv c us`  => display only cases for United States\n' +
-        '`.cv d it`  => display only deaths for Italy\n' +
-        '`.cv d italy`  => also display only deaths for Italy, but using full name for input\n' +
-        '`.cv s mn`  => display summary for the state of Minnesota\n' +
-        '`.cv d it`  => display only deaths for Italy\n' +
-        '`.cv r`        => display only recoveries for worldwide\n' +
-        '`.cv north america`  => display summary for North America\n\n' +
-        '**__Notes and extras:__**\n' +
-        '• You can use either the 2-letter abbreviation, or the full name for countries and states.\n' +
-        '• For continents you must use the FULL name when specifying them. Examples: North America, Africa...\n' +
-        '• Summary reports have counters for new daily data which resets at the end of the day. You can see when the next reset will occur using `.cv time`.\n' +
-        '• You can use either `.cv` OR `-c` as the prefix for commands, so take your pick!\n' +
-        '• This bot is open source and frequently updated! You can get the github link using `.cv source`.\n' +
-        '• Spare some change to support Covid-19 relief efforts? Use `.cv donate` to get a link to official W.H.O. Solidarity Response Fund.\n' +
-        '• Need a reminder of these commands? You can show this help message again any time by using `.cv help`.\n' +
-        '• One more thing... Please share this bot if you like it! You can get the invite link to add the bot to your other servers using `.cv invite`.\n'
-      );
-
-      // Github
-    } else if (command === 'github' || command === 'source' || command === 'code') {
-      channel.send('https://github.com/YoloSwagDogDiggity/Covid-19');
-      console.log(chalk.cyan('Github repo deployed to ' + chalk.yellow(message.author.username) + chalk.green(' in: ') + chalk.cyan(message.guild.name)));
-
-      // Time to next counter reset
-    } else if (command === 'time' || command === 'next' || command === 'refresh') {
-      channel.send(timeUntilDayReset());
-
-      // Invite
-    } else if (command === 'invite' || command === 'add' || command === 'join') {
-      channel.send('I\'m thrilled you want me to join you! I\'ll make it super easy to invite me to your server using this link: \n' +
-        'https://discordapp.com/oauth2/authorize?client_id=691863138559328327&scope=bot&permissions=67488832');
-      console.log(chalk.cyan('Invite link deployed to ' + chalk.yellow(message.author.username) + chalk.green(' in: ') + chalk.cyan(message.guild.name)));
-
-      // Donate to response efforts
-    } else if (command === 'donate' || command === 'don' || command === 'give') {
-      channel.send('During this time of critical need, any financial support will go a very long way to help save lives. Here\'s is a link to donate to the official COVID-19 Solidarity Response Fund: \n' +
-        'https://www.who.int/emergencies/diseases/novel-coronavirus-2019/donate');
-      console.log(chalk.cyan('Donation link deployed to ' + chalk.yellow(message.author.username) + chalk.green(' in: ') + chalk.cyan(message.guild.name)));
-
-      // Bot session presence statistics
-    } else if (command === 'info' || command === 'about' || command === 'stats' || command === 'stat') {
-      console.log(chalk.cyan('Session stats deployed to ' + chalk.yellow(message.author.username) + chalk.green(' in: ') + chalk.cyan(message.guild.name)));
-      postSessionStats(channel);
-    }
-
-    // Default to the summary command if none is provided
-    else {
-      getSummary(channel, combinedParamsDefault);
-      combinedParamsDefault == '' ? combinedParamsDefault = 'ALL' : combinedParamsDefault;
-      console.log(chalk.blue('Summary') + chalk.green(' command called by ') + chalk.yellow(message.author.username) + chalk.green(' in: ') + chalk.cyan(message.guild.name) + chalk.green(' with params: ') + chalk.cyan(combinedParamsDefault));
-    }
-  }
+  const matches = rankSuggestions(pool, focused.value);
+  await interaction.respond(matches.map(name => ({ name, value: name })));
 }
 
 
@@ -281,314 +248,166 @@ async function commands(message) {
 // -------------------------------------------
 // -------------------------------------------
 
-function getCases(channel, param) {
-  let dailyChangeAddon = '';
-  if (param && !(param.toLowerCase() === 'world' || param.toLowerCase() === 'worldwide' || param.toLowerCase() === 'global' ||
-    param.toLowerCase() === 'total' || param.toLowerCase() === 'all')) {
-    // Convert abbreviated country input to full name for json access
-    if (param && param.length == 2) {
-      param = shortcountrynames.to_name(param.toUpperCase());
-      if (param) {
-        for (let i = 1; i < worldCacheJSON.length; i++) {
-          const chunk = worldCacheJSON[i];
-          if (chunk.country.toLowerCase() == param.toLowerCase()) {
-            if (chunk.newcases) {
-              dailyChangeAddon = '  (' + chunk.newcases + ' today)';
-            } else { dailyChangeAddon = ''; }
-            channel.send('Total confirmed cases in **' + chunk.country + ':**  ' + chunk.cases + dailyChangeAddon);
-            return;
-          }
-        }
-        channel.send('That input was not recognized. Try entering the full name of the country instead.');
-        console.log(chalk.yellow('Unmatched country cache key needs custom value: ' + chalk.cyan(param)));
-      }
-    }
-    else {
-      for (let i = 1; i < worldCacheJSON.length; i++) {
-        const chunk = worldCacheJSON[i];
-        if (chunk.country.toLowerCase() == param.toLowerCase()) {
-          if (chunk.newcases) {
-            dailyChangeAddon = '  (' + chunk.newcases + ' today)';
-          } else { dailyChangeAddon = ''; }
-          channel.send('Total confirmed cases in **' + chunk.country + ':**  ' + chunk.cases + dailyChangeAddon);
-          return;
-        }
-      }
-      channel.send('That input was not recognized. Try entering the 2-letter country abbreviation instead.');
-      console.log(chalk.yellow('Unmatched country cache key NAME: ' + chalk.cyan(param)));
-    }
+// The three single-number commands (cases/deaths/recoveries) all follow the same shape, so they share
+// one implementation instead of the three near-identical copies the original carried.
+const SINGLE_STATS = {
+  cases: { label: 'confirmed cases', field: 'cases', delta: 'newcases', total: 'totalCases' },
+  deaths: { label: 'confirmed deaths', field: 'deaths', delta: 'newdeaths', total: 'totalDeaths' },
+  recoveries: { label: 'confirmed recoveries', field: 'recovered', delta: 'newrecovered', total: 'totalRecovered' }
+};
+
+function getSingleStat(interaction, kind, param) {
+  if (!worldCacheJSON) return replyNoData(interaction);
+  const spec = SINGLE_STATS[kind];
+
+  if (isWorldwide(param)) {
+    return interaction.reply(`Total ${spec.label} worldwide: **${clean(worldCacheJSON[0][spec.total])}**`);
   }
-  else {
-    channel.send('Total confirmed cases worldwide: ' + worldCacheJSON[0].totalCases);
-  }
+
+  const match = resolveCountry(worldCacheJSON, param);
+  if (!match) return replyUnknownLocation(interaction, param);
+
+  const value = withDaily(match[spec.field], match[spec.delta]);
+  return interaction.reply(`Total ${spec.label} in **${match.country}:**  ${value}`);
 }
 
 
+function getSummary(interaction, param) {
+  if (!worldCacheJSON) return replyNoData(interaction);
 
-function getDeaths(channel, param) {
-  let dailyChangeAddon = '';
-  if (param && !(param.toLowerCase() === 'world' || param.toLowerCase() === 'worldwide' || param.toLowerCase() === 'global' ||
-    param.toLowerCase() === 'total' || param.toLowerCase() === 'all')) {
-    // Convert abbreviated country input to full name for json access
-    if (param && param.length == 2) {
-      param = shortcountrynames.to_name(param.toUpperCase());
-      if (param) {
-        for (let i = 1; i < worldCacheJSON.length; i++) {
-          const chunk = worldCacheJSON[i];
-          if (chunk.country.toLowerCase() == param.toLowerCase()) {
-            if (chunk.newdeaths) {
-              dailyChangeAddon = '  (' + chunk.newdeaths + ' today)';
-            } else { dailyChangeAddon = ''; }
-            channel.send('Total confirmed deaths in **' + chunk.country + ':**  ' + chunk.deaths + dailyChangeAddon);
-            return;
-          }
-        }
-        channel.send('That input was not recognized. Try entering the full name of the country instead.');
-        console.log(chalk.yellow('Unmatched country cache key needs custom value: ' + chalk.cyan(param)));
-      }
+  let match;
+  if (isWorldwide(param)) {
+    // Prefer the table's own "World" row, since it carries the daily deltas the header counters lack.
+    match = worldCacheJSON.slice(1).find(entry => entry.country && entry.country.toLowerCase() === 'world');
+    if (!match) {
+      match = {
+        country: 'World',
+        cases: worldCacheJSON[0].totalCases,
+        deaths: worldCacheJSON[0].totalDeaths,
+        recovered: worldCacheJSON[0].totalRecovered,
+        activecases: worldCacheJSON[0].totalActiveCases
+      };
     }
-    else {
-      for (let i = 1; i < worldCacheJSON.length; i++) {
-        const chunk = worldCacheJSON[i];
-        if (chunk.country.toLowerCase() == param.toLowerCase()) {
-          if (chunk.newdeaths) {
-            dailyChangeAddon = '  (' + chunk.newdeaths + ' today)';
-          } else { dailyChangeAddon = ''; }
-          channel.send('Total confirmed deaths in **' + chunk.country + ':**  ' + chunk.deaths + dailyChangeAddon);
-          return;
-        }
-      }
-      channel.send('That input was not recognized. Try entering the 2-letter country abbreviation instead.');
-      console.log(chalk.yellow('Unmatched country cache key NAME: ' + chalk.cyan(param)));
-    }
+  } else {
+    match = resolveCountry(worldCacheJSON, param);
+    if (!match) return replyUnknownLocation(interaction, param);
   }
-  else {
-    channel.send('Total confirmed deaths worldwide: ' + worldCacheJSON[0].totalDeaths);
-  }
+
+  const title = match.country.toLowerCase() === 'world' ? 'Worldwide' : match.country;
+  const embed = baseEmbed(title, worldSource).addFields(...compact(
+    // Core figures always show, even as "n/a", so the layout stays recognizable. Everything after
+    // them is dropped when the source has nothing, rather than padding the embed with dead rows.
+    field('Total Cases', withDaily(match.cases, match.newcases), true),
+    field('Deaths', withDaily(match.deaths, match.newdeaths), true),
+    field('Recoveries', withDaily(match.recovered, match.newrecovered), true),
+    field('Active Cases', match.activecases),
+    field('Critical Cases', match.criticalcases),
+    field('Total Tests', match.testsperformed),
+    field('Tests/1M Pop', match.testsperformedbypop),
+    field('Cases/1M Pop', match.casesbypop),
+    field('Population', match.population)
+  ));
+
+  return interaction.reply({ embeds: [embed] });
 }
 
 
+function getUsCases(interaction, stateInput) {
+  if (!usCacheJSON) return replyNoData(interaction);
 
-function getRecoveries(channel, param) {
-  if (param && !(param.toLowerCase() === 'world' || param.toLowerCase() === 'worldwide' || param.toLowerCase() === 'global' ||
-    param.toLowerCase() === 'total' || param.toLowerCase() === 'all')) {
-    // Convert abbreviated country input to full name for json access
-    if (param && param.length == 2) {
-      param = shortcountrynames.to_name(param.toUpperCase());
-      if (param) {
-        for (let i = 1; i < worldCacheJSON.length; i++) {
-          const chunk = worldCacheJSON[i];
-          if (chunk.country.toLowerCase() == param.toLowerCase()) {
-            if (chunk.recovered) {
-              channel.send('Total confirmed recoveries in **' + chunk.country + ':**  ' + chunk.recovered);
-            } else {
-              channel.send('No recoveries reported yet.');
-            }
-            return;
-          }
-        }
-        channel.send('That input was not recognized. Try entering the full name of the country instead.');
-        console.log(chalk.yellow('Unmatched country cache key needs custom value: ' + chalk.cyan(param)));
-      }
-    }
-    else {
-      for (let i = 1; i < worldCacheJSON.length; i++) {
-        const chunk = worldCacheJSON[i];
-        if (chunk.country.toLowerCase() == param.toLowerCase()) {
-          if (chunk.recovered) {
-            channel.send('Total confirmed recoveries in **' + chunk.country + ':**  ' + chunk.recovered);
-          } else {
-            channel.send('No recoveries reported yet.');
-          }
-          return;
-        }
-      }
-      channel.send('That input was not recognized. Try entering the 2-letter country abbreviation instead.');
-      console.log(chalk.yellow('Unmatched country cache key NAME: ' + chalk.cyan(param)));
-    }
+  const match = resolveState(usCacheJSON, stateInput);
+  if (!match) {
+    return interaction.reply({
+      content: 'That state wasn\'t found. Make sure you enter a valid US state using either the 2-letter abbreviation or the full name and try again.\n(Example:  `/covid state MN`  for data from Minnesota)\n' +
+        'If you are trying to look up a country, use `/covid summary` instead.',
+      flags: MessageFlags.Ephemeral
+    });
   }
-  else {
-    channel.send('Total confirmed recoveries worldwide: ' + worldCacheJSON[0].totalRecovered);
+
+  const embed = baseEmbed(match.state, usSource).addFields(...compact(
+    field('Cases', withDaily(match.cases, match.newcases), true),
+    field('Deaths', withDaily(match.deaths, match.newdeaths), true),
+    field('Recoveries', clean(match.recoveries), true),
+    field('Active Cases', match.activecases),
+    field('Total Tests', match.testsperformed),
+    field('Cases/1M Pop', match.casesbypop),
+    field('Deaths/1M Pop', match.deathsbypop),
+    field('Population', match.population)
+  ));
+
+  // Worldometers stopped publishing per-state daily changes, active cases and testing numbers. Say so
+  // outright rather than quietly showing "n/a" and letting people wonder if the bot is broken.
+  if (!present(match.activecases) && !present(match.testsperformed)) {
+    embed.setDescription('_Per-state new cases, active cases and testing figures are no longer published by the data source._');
   }
+
+  return interaction.reply({ embeds: [embed] });
 }
 
 
+function postHelp(interaction) {
+  const embed = new EmbedBuilder()
+    .setColor(BRAND_COLOR)
+    .setTitle('Covid-19 Bot Help')
+    .setThumbnail(THUMBNAIL)
+    .setDescription('Here\'s how to interact with the Covid-19 bot. Every command starts with `/covid`.')
+    .addFields(
+      {
+        name: 'Commands',
+        value: '`/covid summary [location]` — full stats for a country, continent, or worldwide\n' +
+          '`/covid cases [location]` — confirmed cases only\n' +
+          '`/covid deaths [location]` — confirmed deaths only\n' +
+          '`/covid recoveries [location]` — confirmed recoveries only\n' +
+          '`/covid state <state>` — stats for a US state\n' +
+          '`/covid time` — time until the daily counters reset'
+      },
+      {
+        name: 'Examples',
+        value: '`/covid summary` — worldwide summary\n' +
+          '`/covid summary Germany` — summary for Germany\n' +
+          '`/covid cases USA` — cases for the United States\n' +
+          '`/covid deaths Italy` — deaths for Italy\n' +
+          '`/covid state MN` — summary for Minnesota\n' +
+          '`/covid summary North America` — summary for a whole continent'
+      },
+      {
+        name: 'Notes and extras',
+        value: '• Start typing a country or state and the bot will suggest matches for you.\n' +
+          '• You can use either the 2-letter abbreviation or the full name.\n' +
+          '• Continents work too — try North America, Europe, Asia, Africa, Oceania or South America.\n' +
+          '• Use `/covid source` for the GitHub repo and `/covid invite` to add the bot elsewhere.\n' +
+          '• Spare some change for Covid-19 relief? `/covid donate` links the W.H.O. Solidarity Response Fund.'
+      }
+    )
+    .setFooter({ text: 'Covid-19 data provided by World-O-Meter', iconURL: FOOTER_ICON });
 
-function getSummary(channel, param) {
-  let cases = '', deaths = '', recoveries = '', active = '', critical = '', tests = '', testbypop = '', dailyChangeAddon = '', dailyChangeAddon2 = '';
-  if (param && !(param.toLowerCase() === 'world' || param.toLowerCase() === 'worldwide' || param.toLowerCase() === 'global' ||
-    param.toLowerCase() === 'total' || param.toLowerCase() === 'all')) {
-    // Convert abbreviated country input to full name for json access
-    if (param && param.length == 2) {
-      param = shortcountrynames.to_name(param.toUpperCase());
-      if (param) {
-        for (let i = 1; i < worldCacheJSON.length; i++) {
-          const chunk = worldCacheJSON[i];
-          if (chunk.country.toLowerCase() == param.toLowerCase()) {
-            if (chunk.newcases) {
-              dailyChangeAddon = '  (' + chunk.newcases + ' today)';
-            } else { dailyChangeAddon = ''; }
-            if (chunk.newdeaths) {
-              dailyChangeAddon2 = '  (' + chunk.newdeaths + ' today)';
-            } else { dailyChangeAddon2 = ''; }
-            if (chunk.cases === '') { cases = 0; } else { cases = chunk.cases + dailyChangeAddon; }
-            if (chunk.deaths === '') { deaths = 0; } else { deaths = chunk.deaths + dailyChangeAddon2; }
-            if (chunk.recovered === '') { recoveries = 0; } else { recoveries = chunk.recovered; }
-            if (chunk.activecases === '') { active = 0; } else { active = chunk.activecases; }
-            if (chunk.criticalcases === '') { critical = 0; } else { critical = chunk.criticalcases; }
-            if (chunk.testsperformed === '') { tests = 'n/a'; } else { tests = chunk.testsperformed; }
-            if (chunk.testsperformedbypop === '') { testbypop = 'n/a'; } else { testbypop = chunk.testsperformedbypop; }
-            channel.send('**__' + chunk.country + ':__**\n' +
-              'Total Cases:         ' + cases + '\n' +
-              'Active Cases:       ' + active + '\n' +
-              'Critical Cases:     ' + critical + '\n' +
-              'Deaths:                  ' + deaths + '\n' +
-              'Recoveries:           ' + recoveries + '\n' +
-              'Total Tests:           ' + tests + '\n' +
-              'Tests/1M Pop:      ' + testbypop);
-            return;
-          }
-        }
-        channel.send('That input was not recognized. Try entering the full name of the country instead.');
-        console.log(chalk.yellow('Unmatched country cache key needs custom value: ' + chalk.cyan(param)));
-      }
-    }
-    else {
-      for (let i = 1; i < worldCacheJSON.length; i++) {
-        const chunk = worldCacheJSON[i];
-        if (chunk.country.toLowerCase() == param.toLowerCase()) {
-          if (chunk.newcases) {
-            dailyChangeAddon = '  (' + chunk.newcases + ' today)';
-          } else { dailyChangeAddon = ''; }
-          if (chunk.newdeaths) {
-            dailyChangeAddon2 = '  (' + chunk.newdeaths + ' today)';
-          } else { dailyChangeAddon2 = ''; }
-          if (chunk.cases === '') { cases = 0; } else { cases = chunk.cases + dailyChangeAddon; }
-          if (chunk.deaths === '') { deaths = 0; } else { deaths = chunk.deaths + dailyChangeAddon2; }
-          if (chunk.recovered === '') { recoveries = 0; } else { recoveries = chunk.recovered; }
-          if (chunk.activecases === '') { active = 0; } else { active = chunk.activecases; }
-          if (chunk.criticalcases === '') { critical = 0; } else { critical = chunk.criticalcases; }
-          if (chunk.testsperformed === '') { tests = 'n/a'; } else { tests = chunk.testsperformed; }
-          if (chunk.testsperformedbypop === '') { testbypop = 'n/a'; } else { testbypop = chunk.testsperformedbypop; }
-          channel.send('**__' + chunk.country + ':__**\n' +
-            'Total Cases:         ' + cases + '\n' +
-            'Active Cases:       ' + active + '\n' +
-            'Critical Cases:     ' + critical + '\n' +
-            'Deaths:                  ' + deaths + '\n' +
-            'Recoveries:           ' + recoveries + '\n' +
-            'Total Tests:           ' + tests + '\n' +
-            'Tests/1M Pop:      ' + testbypop);
-          return;
-        }
-      }
-      channel.send('That input was not recognized. Try entering the 2-letter country abbreviation instead.');
-      console.log(chalk.yellow('Unmatched country cache key NAME: ' + chalk.cyan(param)));
-    }
-  }
-  else {
-    for (let i = 1; i < worldCacheJSON.length; i++) {
-      const chunk = worldCacheJSON[i];
-      if (chunk.country.toLowerCase() == 'world') {
-        if (chunk.newcases) {
-          dailyChangeAddon = '  (' + chunk.newcases + ' today)';
-        } else { dailyChangeAddon = ''; }
-        if (chunk.newdeaths) {
-          dailyChangeAddon2 = '  (' + chunk.newdeaths + ' today)';
-        } else { dailyChangeAddon2 = ''; }
-        if (chunk.cases === '') { cases = 0; } else { cases = chunk.cases + dailyChangeAddon; }
-        if (chunk.deaths === '') { deaths = 0; } else { deaths = chunk.deaths + dailyChangeAddon2; }
-        if (chunk.recovered === '') { recoveries = 0; } else { recoveries = chunk.recovered; }
-        if (chunk.activecases === '') { active = 0; } else { active = chunk.activecases; }
-        if (chunk.criticalcases === '') { critical = 0; } else { critical = chunk.criticalcases; }
-        channel.send('**__Worldwide:__**\n' +
-          'Total Cases:       ' + cases + '\n' +
-          'Active Cases:     ' + active + '\n' +
-          'Critical Cases:   ' + critical + '\n' +
-          'Deaths:                ' + deaths + '\n' +
-          'Recoveries:         ' + recoveries);
-        return;
-      }
-    }
-  }
+  return interaction.reply({ embeds: [embed] });
 }
-
-
-
-function getUsCases(channel, state) {
-  let foundState = false;
-  let dailyChangeAddon = '', dailyChangeAddon2 = '', cases = '', deaths = '', recovered = '', active = '', casebypop = '', tests = '', testbypop = '', deathbypop = '';
-  // Convert abbreviated state input to full name for json access
-  if (state && state.length == 2) {
-    state = abbrState(state.toUpperCase(), 'name');
-  }
-  if (state) {
-    for (let j = 0; j < statesJSON.length; j++) {
-      if (statesJSON[j].state && (statesJSON[j].state.toUpperCase() == state.toUpperCase())) {
-        state = statesJSON[j].state;
-        const chunk = statesJSON[j];
-        if (chunk.newcases) {
-          dailyChangeAddon = '  (' + chunk.newcases + ' today)';
-        } else { dailyChangeAddon = ''; }
-        if (chunk.newdeaths) {
-          dailyChangeAddon2 = '  (' + chunk.newdeaths + ' today)';
-        } else { dailyChangeAddon2 = ''; }
-        cases = chunk.cases + dailyChangeAddon;
-        active = chunk.activecases;
-        deaths = chunk.deaths + dailyChangeAddon2;
-        tests = chunk.testsperformed;
-        testbypop = chunk.testsperformedbypop;
-        recovered = chunk.recoveries;
-        casebypop = chunk.casesbypop;
-        deathbypop = chunk.deathsbypop;
-        foundState = true;
-      }
-    }
-    if (foundState) {
-      if (recovered == '0') { recovered = '0 (or not reported)'; }
-      channel.send('__**' + state + ':**__ ' +
-        '\nCases:                       ' + cases +
-        '\nActive Cases:          ' + active +
-        '\nDeaths:                     ' + deaths +
-        '\nRecoveries:              ' + numberWithCommas(recovered) +
-        '\nTotal Tests:              ' + tests +
-        '\nTests/1M Pop:         ' + testbypop +
-        '\nCases/1M Pop:       ' + casebypop +
-        '\nDeaths/1M Pop:     ' + deathbypop);
-    }
-    else {
-      channel.send('That state wasn\'t found. Make sure you enter a valid US state using either the 2-letter abbreviation or the full name and try again.\n(Example:  `.cv s mn`  for data from Minnesota)\n' +
-        'If you are trying to lookup a country, just use `.cv <country>`.');
-    }
-  }
-  else {
-    channel.send('That input was not recognized. Enter a valid US state and try again.\n' +
-      'If you are trying to lookup a country, just use `.cv <country>`.');
-    console.log(chalk.yellow('Unmatched state key value: ' + chalk.cyan(state)));
-  }
-}
-
-
 
 
 // Post bot session stats and general information
-function postSessionStats(channel) {
-  const users = (client.guilds.cache.reduce(function (sum, guild) { return sum + guild.memberCount; }, 0));
-  const embed = new Discord.MessageEmbed()
-    .setColor('#03fcd7')
+function postSessionStats(interaction) {
+  const users = client.guilds.cache.reduce((sum, guild) => sum + (guild.memberCount || 0), 0);
+  const embed = new EmbedBuilder()
+    .setColor(BRAND_COLOR)
     .setTitle('Covid-19 Bot Information')
-    .setDescription('Covid-19 is a powerful and simple to use bot for checking stats on the Coronavirus pandemic from around the world in real time.')
-    .setThumbnail('https://i.imgur.com/GblpWSq.png')
+    .setDescription('Covid-19 is a powerful and simple to use bot for checking stats on the Coronavirus pandemic from around the world.')
+    .setThumbnail(THUMBNAIL)
     .addFields(
-      { name: '\u200B', value: 'Help Command: `.cv help`' },
-      { name: '\u200B', value: '[Bot Invite](https://discordapp.com/oauth2/authorize?client_id=691863138559328327&scope=bot&permissions=67488832)' },
-      { name: '\u200B', value: '[GitHub Repo](https://github.com/YoloSwagDogDiggity/Covid-19)' },
-      { name: '\u200B', value: '\u200B' },
-      { name: 'Servers', value: client.guilds.cache.size, inline: true },
-      { name: 'Users', value: users, inline: true },
-      { name: 'Uptime', value: Math.trunc(client.uptime / (3600000)) + 'hr\n', inline: true },
+      { name: '​', value: 'Help Command: `/covid help`' },
+      { name: '​', value: `[Bot Invite](${inviteUrl()})` },
+      { name: '​', value: `[GitHub Repo](${REPO_URL})` },
+      { name: '​', value: '​' },
+      // Embed field values must be strings. The original passed raw numbers here, which throws.
+      { name: 'Servers', value: String(client.guilds.cache.size), inline: true },
+      { name: 'Users', value: String(users), inline: true },
+      { name: 'Uptime', value: `${Math.trunc(client.uptime / 3600000)}hr`, inline: true },
+      { name: 'Latency', value: `${Math.max(0, Math.round(client.ws.ping))} ms`, inline: true },
+      { name: 'Data', value: sourceLabel(worldSource), inline: true }
     )
-    .setFooter('Covid-19 data provided by World-O-Meter', 'https://i.imgur.com/jnvYxdh.jpg');
-  channel.send(embed);
+    .setFooter({ text: 'Covid-19 data provided by World-O-Meter', iconURL: FOOTER_ICON });
+
+  return interaction.reply({ embeds: [embed] });
 }
 
 
@@ -625,97 +444,135 @@ function postSessionStats(channel) {
 // -------------------------------------------
 
 
-// Scheduled utility function to refresh cache with new data
+// Loads the on-disk cache, falling back to the bundled snapshot, so the bot can answer before the
+// first live scrape finishes (and forever after, once the data source goes offline for good).
+async function loadInitialCaches() {
+  const [world, us] = await Promise.all([loadStats('world'), loadStats('us')]);
+  worldCacheJSON = world.data;
+  worldSource = world.source;
+  usCacheJSON = us.data;
+  usSource = us.source;
+
+  if (worldSource === 'sample' || usSource === 'sample') {
+    console.log(chalk.yellow('Using bundled sample data until a live collection succeeds.'));
+  }
+  if (worldSource === 'none' && usSource === 'none') {
+    console.log(chalk.yellow('No cached or sample data available yet. Waiting on first collection.'));
+  }
+}
+
+
+// Scheduled utility function to refresh cache with new data.
+// The cachers hand back the parsed data directly, which removes the old fixed 30 second sleep that
+// used to race against the asynchronous file writes.
 async function updateCache() {
-  //Refresh the cache
-  await usStatsCacher();
-  await worldMetersCacher();
-  setTimeout(function () {
-    // Read and parse the refreshed cache
-    statesJSON = JSON.parse(fs.readFileSync('USstats.json', 'utf8'));
-    worldCacheJSON = JSON.parse(fs.readFileSync('WorldStats.json', 'utf8'));
-  }, 30000); // wait for data collection to finish before reading files again
-}
+  const [world, us] = await Promise.all([worldMetersCacher(), usStatsCacher()]);
 
-
-
-// Get time until next reset of daily stats
-function timeUntilDayReset() {
-  const now = new Date();
-  const hr = now.getHours();
-  const min = now.getMinutes();
-  let hrsLeft;
-  const minsLeft = 60 - min;
-  hrsLeft = (19 - hr <= 0) ? (24 + (19 - hr)) : (18 - hr);
-  if (hrsLeft == 24) {
-    hrsLeft = 0;
-    if (minsLeft <= 45) {
-      return 'Todays counts will reset very soon.';
-    }
-    return `Todays counts will reset in approximately ${hrsLeft}hrs, ${minsLeft}mins.`;
+  if (world) {
+    worldCacheJSON = world;
+    worldSource = 'live';
+  } else if (!worldCacheJSON) {
+    const fallback = await loadStats('world');
+    worldCacheJSON = fallback.data;
+    worldSource = fallback.source;
   }
-  else {
-    return `Todays counts will reset in approximately ${hrsLeft}hrs, ${minsLeft}mins.`;
+
+  if (us) {
+    usCacheJSON = us;
+    usSource = 'live';
+  } else if (!usCacheJSON) {
+    const fallback = await loadStats('us');
+    usCacheJSON = fallback.data;
+    usSource = fallback.source;
   }
 }
 
 
-
-// Function to add commas to numbers
-function numberWithCommas(x) {
-  const parts = x.toString().split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return parts.join('.');
+function replyNoData(interaction) {
+  return interaction.reply({
+    content: 'I don\'t have any data loaded right now. Try again in a minute while the cache fills up.',
+    flags: MessageFlags.Ephemeral
+  });
 }
 
-
-
-// Function to update bot session stats on Discord Bot List every 30 minutes automatically
-function activateDBLStatsPublishing() {
-  if (!keys.db || keys.dbl == '') {
-    console.log(chalk.yellow('No Top.gg API key found. Top.gg stats will not be published.'));
-    return;
+function replyUnknownLocation(interaction, param) {
+  if (isNorthKorea(param)) {
+    return interaction.reply({ content: 'North Korea stats are not available.', flags: MessageFlags.Ephemeral });
   }
-  poster = AutoPoster(keys.dbl, client);
-  poster.on('error', (err) => {
-    // Catch issues with Top.gg updater
-    console.log(chalk.yellow('Top.gg poster failed to update due to the following error:  ' + chalk.cyan(err)));
+  return interaction.reply({
+    content: `I couldn't find **${param}** in the data. Try picking from the suggestions as you type, or use the 2-letter country code.`,
+    flags: MessageFlags.Ephemeral
   });
 }
 
 
+// Describes where the numbers came from, so archived snapshot data is never mistaken for live data.
+function sourceLabel(source) {
+  if (source === 'live' || source === 'cache') return 'Live from World-O-Meter';
+  if (source === 'sample') {
+    return snapshotDate
+      ? `Archived snapshot from ${snapshotDate}`
+      : 'Archived snapshot data';
+  }
+  return 'No data loaded';
+}
 
-// Utility function to convert state abbreviations
-function abbrState(input, to) {
-  const states = [
-    ['Arizona', 'AZ'], ['Alabama', 'AL'], ['Alaska', 'AK'], ['Arkansas', 'AR'], ['California', 'CA'], ['Colorado', 'CO'],
-    ['Connecticut', 'CT'], ['Delaware', 'DE'], ['Florida', 'FL'], ['Georgia', 'GA'], ['Hawaii', 'HI'],
-    ['Idaho', 'ID'], ['Illinois', 'IL'], ['Indiana', 'IN'], ['Iowa', 'IA'], ['Kansas', 'KS'], ['Kentucky', 'KY'],
-    ['Louisiana', 'LA'], ['Maine', 'ME'], ['Maryland', 'MD'], ['Massachusetts', 'MA'], ['Michigan', 'MI'],
-    ['Minnesota', 'MN'], ['Mississippi', 'MS'], ['Missouri', 'MO'], ['Montana', 'MT'], ['Nebraska', 'NE'],
-    ['Nevada', 'NV'], ['New Hampshire', 'NH'], ['New Jersey', 'NJ'], ['New Mexico', 'NM'], ['New York', 'NY'],
-    ['North Carolina', 'NC'], ['North Dakota', 'ND'], ['Ohio', 'OH'], ['Oklahoma', 'OK'], ['Oregon', 'OR'],
-    ['Pennsylvania', 'PA'], ['Rhode Island', 'RI'], ['South Carolina', 'SC'], ['South Dakota', 'SD'],
-    ['Tennessee', 'TN'], ['Texas', 'TX'], ['Utah', 'UT'], ['Vermont', 'VT'], ['Virginia', 'VA'],
-    ['Washington', 'WA'], ['West Virginia', 'WV'], ['Wisconsin', 'WI'], ['Wyoming', 'WY'],
-  ];
-  if (to == 'abbr') {
-    input = input.replace(/\w\S*/g, function (txt) { return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase(); });
-    for (let i = 0; i < states.length; i++) {
-      if (states[i][0] == input) {
-        return (states[i][1]);
-      }
+function baseEmbed(title, source) {
+  return new EmbedBuilder()
+    .setColor(BRAND_COLOR)
+    .setTitle(title)
+    .setFooter({ text: `${sourceLabel(source)} · World-O-Meter`, iconURL: FOOTER_ICON })
+    .setTimestamp();
+}
+
+// Builds one embed field. Optional fields collapse to null when the source has no value for them,
+// which matters now that Worldometers publishes far fewer columns than it used to -- an embed full of
+// "n/a" rows reads like a broken bot rather than a retired data set.
+function field(name, value, always = false) {
+  const text = clean(value);
+  if (!always && text === 'n/a') return null;
+  return { name, value: text, inline: true };
+}
+
+function compact(...fieldList) {
+  return fieldList.filter(Boolean);
+}
+
+// Built from the logged-in application's own ID so self-hosted copies get their own working link.
+function inviteUrl() {
+  return `https://discord.com/oauth2/authorize?client_id=${client.user.id}&scope=bot%20applications.commands&permissions=67488832`;
+}
+
+
+// Function to update bot session stats on Discord Bot List every 30 minutes automatically.
+// This used to use the topgg-autoposter package, which is unmaintained and pulled in a vulnerable
+// dependency chain. A plain POST to the documented endpoint does the same job with no dependencies.
+function activateDBLStatsPublishing() {
+  if (!keys.dbl || keys.dbl === '') {
+    console.log(chalk.yellow('No Top.gg API key found. Top.gg stats will not be published.'));
+    return;
+  }
+  postTopGgStats();
+  schedule.scheduleJob('*/30 * * * *', postTopGgStats);
+}
+
+async function postTopGgStats() {
+  try {
+    const res = await fetch(`https://top.gg/api/bots/${client.user.id}/stats`, {
+      method: 'POST',
+      headers: { 'Authorization': keys.dbl, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server_count: client.guilds.cache.size }),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!res.ok) {
+      console.log(chalk.yellow('Top.gg poster failed to update, status: ' + chalk.cyan(res.status)));
     }
-  } else if (to == 'name') {
-    input = input.toUpperCase();
-    for (let i = 0; i < states.length; i++) {
-      if (states[i][1] == input) {
-        return (states[i][0]);
-      }
-    }
-    return null;
+  } catch (err) {
+    // Catch issues with Top.gg updater
+    console.log(chalk.yellow('Top.gg poster failed to update due to the following error:  ' + chalk.cyan(err.message)));
   }
 }
+
 
 
 
@@ -728,4 +585,29 @@ function abbrState(input, to) {
 // -------------------------------------------
 // -------------------------------------------
 
-client.login(keys.token);
+client.login(keys.token).catch(async err => {
+  // A bad token used to surface as an unhandled rejection and a raw stack trace. Say what's wrong.
+  if (err.code === 'TokenInvalid') {
+    console.log(chalk.red('Discord rejected the bot token in keys.json. Double-check it in the Developer Portal.'));
+  } else {
+    console.log(chalk.red('Failed to log in: ') + chalk.cyan(err.message));
+  }
+  await shutdown(1);
+});
+
+// Shut down tidily when a process manager (pm2, systemd, Ctrl+C) asks us to stop.
+process.on('SIGINT', () => shutdown(0));
+process.on('SIGTERM', () => shutdown(0));
+
+// Cancels the refresh timers and closes the websocket so node can exit on its own terms. Calling
+// process.exit() outright while node-schedule still holds live timers trips a libuv assertion on
+// Windows, which is a confusing way to report "your token is wrong".
+async function shutdown(code) {
+  process.exitCode = code;
+  try {
+    await schedule.gracefulShutdown();
+  } catch { /* nothing was scheduled yet */ }
+  try {
+    await client.destroy();
+  } catch { /* never got connected */ }
+}
